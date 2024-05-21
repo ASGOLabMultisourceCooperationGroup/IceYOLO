@@ -1,3 +1,3 @@
-# yuka
+# Yuka
 
-Describe your project here.
+YRCC instance segmentations based on YOLOv8
