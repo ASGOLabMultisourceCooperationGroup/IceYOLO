@@ -62,6 +62,9 @@ from .conv import (
     RepConv,
     SpatialAttention,
 )
+from .custom import (
+    EMAttention, PreProcessorFold
+)
 from .head import OBB, Classify, Detect, Pose, RTDETRDecoder, Segment, WorldDetect
 from .transformer import (
     AIFI,
@@ -135,4 +138,6 @@ __all__ = (
     "CBFuse",
     "CBLinear",
     "Silence",
+    "EMAttention",
+    "PreProcessorFold",
 )

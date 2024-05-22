@@ -47,8 +47,7 @@ from ultralytics.nn.modules import (
     ResNetLayer,
     RTDETRDecoder,
     Segment,
-    Silence,
-    WorldDetect,
+    WorldDetect, EMAttention, PreProcessorFold,
 )
 from ultralytics.utils import DEFAULT_CFG_DICT, DEFAULT_CFG_KEYS, LOGGER, colorstr, emojis, yaml_load
 from ultralytics.utils.checks import check_requirements, check_suffix, check_yaml
@@ -274,17 +273,23 @@ class BaseModel(nn.Module):
 class DetectionModel(BaseModel):
     """YOLOv8 detection model."""
 
-    def __init__(self, cfg="yolov8n.yaml", ch=3, nc=None, verbose=True):  # model, input channels, number of classes
+    def __init__(self, cfg="yolov8n.yaml", channel_middle=3, nc=None,
+                 verbose=True):  # model, input channels, number of classes
         """Initialize the YOLOv8 detection model with the given config and parameters."""
         super().__init__()
         self.yaml = cfg if isinstance(cfg, dict) else yaml_model_load(cfg)  # cfg dict
 
         # Define model
-        ch = self.yaml["ch"] = self.yaml.get("ch", ch)  # input channels
+        channel_middle = self.yaml["channel_middle"] = self.yaml.get("channel_middle",
+                                                                     channel_middle)  # middle channels
+        channel_input = self.yaml["channel_input"] = self.yaml.get("channel_input", 3)  # input channels
+
         if nc and nc != self.yaml["nc"]:
             LOGGER.info(f"Overriding model.yaml nc={self.yaml['nc']} with nc={nc}")
             self.yaml["nc"] = nc  # override YAML value
-        self.model, self.save = parse_model(deepcopy(self.yaml), ch=ch, verbose=verbose)  # model, savelist
+        self.model, self.save = parse_model(deepcopy(self.yaml), channel_middle=channel_middle,
+                                            channel_input=channel_input,
+                                            verbose=verbose)  # model, savelist
         self.names = {i: f"{i}" for i in range(self.yaml["nc"])}  # default names dict
         self.inplace = self.yaml.get("inplace", True)
 
@@ -294,7 +299,7 @@ class DetectionModel(BaseModel):
             s = 256  # 2x min stride
             m.inplace = self.inplace
             forward = lambda x: self.forward(x)[0] if isinstance(m, (Segment, Pose, OBB)) else self.forward(x)
-            m.stride = torch.tensor([s / x.shape[-2] for x in forward(torch.zeros(1, ch, s, s))])  # forward
+            m.stride = torch.tensor([s / x.shape[-2] for x in forward(torch.zeros(1, channel_middle, s, s))])  # forward
             self.stride = m.stride
             m.bias_init()  # only run once
         else:
@@ -334,9 +339,9 @@ class DetectionModel(BaseModel):
     def _clip_augmented(self, y):
         """Clip YOLO augmented inference tails."""
         nl = self.model[-1].nl  # number of detection layers (P3-P5)
-        g = sum(4**x for x in range(nl))  # grid points
+        g = sum(4 ** x for x in range(nl))  # grid points
         e = 1  # exclude layer count
-        i = (y[0].shape[-1] // g) * sum(4**x for x in range(e))  # indices
+        i = (y[0].shape[-1] // g) * sum(4 ** x for x in range(e))  # indices
         y[0] = y[0][..., :-i]  # large
         i = (y[-1].shape[-1] // g) * sum(4 ** (nl - 1 - x) for x in range(e))  # indices
         y[-1] = y[-1][..., i:]  # small
@@ -350,9 +355,9 @@ class DetectionModel(BaseModel):
 class OBBModel(DetectionModel):
     """YOLOv8 Oriented Bounding Box (OBB) model."""
 
-    def __init__(self, cfg="yolov8n-obb.yaml", ch=3, nc=None, verbose=True):
+    def __init__(self, cfg="yolov8n-obb.yaml", channel_middle=3, nc=None, verbose=True):
         """Initialize YOLOv8 OBB model with given config and parameters."""
-        super().__init__(cfg=cfg, ch=ch, nc=nc, verbose=verbose)
+        super().__init__(cfg=cfg, channel_middle=channel_middle, nc=nc, verbose=verbose)
 
     def init_criterion(self):
         """Initialize the loss criterion for the model."""
@@ -362,9 +367,9 @@ class OBBModel(DetectionModel):
 class SegmentationModel(DetectionModel):
     """YOLOv8 segmentation model."""
 
-    def __init__(self, cfg="yolov8n-seg.yaml", ch=3, nc=None, verbose=True):
+    def __init__(self, cfg="yolov8n-seg.yaml", channel_middle=3, nc=None, verbose=True):
         """Initialize YOLOv8 segmentation model with given config and parameters."""
-        super().__init__(cfg=cfg, ch=ch, nc=nc, verbose=verbose)
+        super().__init__(cfg=cfg, channel_middle=channel_middle, nc=nc, verbose=verbose)
 
     def init_criterion(self):
         """Initialize the loss criterion for the SegmentationModel."""
@@ -374,14 +379,14 @@ class SegmentationModel(DetectionModel):
 class PoseModel(DetectionModel):
     """YOLOv8 pose model."""
 
-    def __init__(self, cfg="yolov8n-pose.yaml", ch=3, nc=None, data_kpt_shape=(None, None), verbose=True):
+    def __init__(self, cfg="yolov8n-pose.yaml", channel_middle=3, nc=None, data_kpt_shape=(None, None), verbose=True):
         """Initialize YOLOv8 Pose model."""
         if not isinstance(cfg, dict):
             cfg = yaml_model_load(cfg)  # load model YAML
         if any(data_kpt_shape) and list(data_kpt_shape) != list(cfg["kpt_shape"]):
             LOGGER.info(f"Overriding model.yaml kpt_shape={cfg['kpt_shape']} with kpt_shape={data_kpt_shape}")
             cfg["kpt_shape"] = data_kpt_shape
-        super().__init__(cfg=cfg, ch=ch, nc=nc, verbose=verbose)
+        super().__init__(cfg=cfg, channel_middle=channel_middle, nc=nc, verbose=verbose)
 
     def init_criterion(self):
         """Initialize the loss criterion for the PoseModel."""
@@ -396,18 +401,22 @@ class ClassificationModel(BaseModel):
         super().__init__()
         self._from_yaml(cfg, ch, nc, verbose)
 
-    def _from_yaml(self, cfg, ch, nc, verbose):
+    def _from_yaml(self, cfg, channel_middle, nc, verbose):
         """Set YOLOv8 model configurations and define the model architecture."""
         self.yaml = cfg if isinstance(cfg, dict) else yaml_model_load(cfg)  # cfg dict
 
         # Define model
-        ch = self.yaml["ch"] = self.yaml.get("ch", ch)  # input channels
+        channel_middle = self.yaml["channel_middle"] = self.yaml.get("channel_middle",
+                                                                     channel_middle)  # middle channels
+        channel_input = self.yaml["channel_input"] = self.yaml.get("channel_input", 3)  # input channels
         if nc and nc != self.yaml["nc"]:
             LOGGER.info(f"Overriding model.yaml nc={self.yaml['nc']} with nc={nc}")
             self.yaml["nc"] = nc  # override YAML value
         elif not nc and not self.yaml.get("nc", None):
             raise ValueError("nc not specified. Must specify nc in model.yaml or function arguments.")
-        self.model, self.save = parse_model(deepcopy(self.yaml), ch=ch, verbose=verbose)  # model, savelist
+        self.model, self.save = parse_model(deepcopy(self.yaml), channel_middle=channel_middle,
+                                            channel_input=channel_input,
+                                            verbose=verbose)  # model, savelist
         self.stride = torch.Tensor([1])  # no stride constraints
         self.names = {i: f"{i}" for i in range(self.yaml["nc"])}  # default names dict
         self.info()
@@ -458,17 +467,17 @@ class RTDETRDetectionModel(DetectionModel):
         predict: Performs a forward pass through the network and returns the output.
     """
 
-    def __init__(self, cfg="rtdetr-l.yaml", ch=3, nc=None, verbose=True):
+    def __init__(self, cfg="rtdetr-l.yaml", channel_middle=3, nc=None, verbose=True):
         """
         Initialize the RTDETRDetectionModel.
 
         Args:
             cfg (str): Configuration file name or path.
-            ch (int): Number of input channels.
+            channel_middle (int): Number of input channels.
             nc (int, optional): Number of classes. Defaults to None.
             verbose (bool, optional): Print additional information during initialization. Defaults to True.
         """
-        super().__init__(cfg=cfg, ch=ch, nc=nc, verbose=verbose)
+        super().__init__(cfg=cfg, channel_middle=channel_middle, nc=nc, verbose=verbose)
 
     def init_criterion(self):
         """Initialize the loss criterion for the RTDETRDetectionModel."""
@@ -558,11 +567,11 @@ class RTDETRDetectionModel(DetectionModel):
 class WorldModel(DetectionModel):
     """YOLOv8 World Model."""
 
-    def __init__(self, cfg="yolov8s-world.yaml", ch=3, nc=None, verbose=True):
+    def __init__(self, cfg="yolov8s-world.yaml", channel_middle=3, nc=None, verbose=True):
         """Initialize YOLOv8 world model with given config and parameters."""
         self.txt_feats = torch.randn(1, nc or 80, 512)  # features placeholder
         self.clip_model = None  # CLIP model placeholder
-        super().__init__(cfg=cfg, ch=ch, nc=nc, verbose=verbose)
+        super().__init__(cfg=cfg, channel_middle=channel_middle, nc=nc, verbose=verbose)
 
     def set_classes(self, text, batch=80, cache_clip_model=True):
         """Set classes in advance so that model could do offline-inference without clip model."""
@@ -573,7 +582,7 @@ class WorldModel(DetectionModel):
             import clip
 
         if (
-            not getattr(self, "clip_model", None) and cache_clip_model
+                not getattr(self, "clip_model", None) and cache_clip_model
         ):  # for backwards compatibility of models lacking clip_model attribute
             self.clip_model = clip.load("ViT-B/32")[0]
         model = self.clip_model if cache_clip_model else clip.load("ViT-B/32")[0]
@@ -723,11 +732,11 @@ def torch_safe_load(weight):
     file = attempt_download_asset(weight)  # search online if missing locally
     try:
         with temporary_modules(
-            {
-                "ultralytics.yolo.utils": "ultralytics.utils",
-                "ultralytics.yolo.v8": "ultralytics.models.yolo",
-                "ultralytics.yolo.data": "ultralytics.data",
-            }
+                {
+                    "ultralytics.yolo.utils": "ultralytics.utils",
+                    "ultralytics.yolo.v8": "ultralytics.models.yolo",
+                    "ultralytics.yolo.data": "ultralytics.data",
+                }
         ):  # for legacy 8.0 Classify and Pose models
             ckpt = torch.load(file, map_location="cpu")
 
@@ -827,7 +836,7 @@ def attempt_load_one_weight(weight, device=None, inplace=True, fuse=False):
     return model, ckpt
 
 
-def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
+def parse_model(d, channel_middle, channel_input=3, verbose=True):  # model_dict, input_channels(3)
     """Parse a YOLO model.yaml dictionary into a PyTorch model."""
     import ast
 
@@ -849,8 +858,8 @@ def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
 
     if verbose:
         LOGGER.info(f"\n{'':>3}{'from':>20}{'n':>3}{'params':>10}  {'module':<45}{'arguments':<30}")
-    ch = [ch]
-    layers, save, c2 = [], [], ch[-1]  # layers, savelist, ch out
+    channel_middle = [channel_middle]
+    layers, save, channel_out = [], [], channel_middle[-1]  # layers, savelist, ch out
     for i, (f, n, m, args) in enumerate(d["backbone"] + d["head"]):  # from, number, module, args
         m = getattr(torch.nn, m[3:]) if "nn." in m else globals()[m]  # get module
         for j, a in enumerate(args):
@@ -886,47 +895,54 @@ def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
             C3x,
             RepC3,
         }:
-            c1, c2 = ch[f], args[0]
-            if c2 != nc:  # if c2 not equal to number of classes (i.e. for Classify() output)
-                c2 = make_divisible(min(c2, max_channels) * width, 8)
+            c1, channel_out = channel_middle[f], args[0]
+            if channel_out != nc:  # if c2 not equal to number of classes (i.e. for Classify() output)
+                channel_out = make_divisible(min(channel_out, max_channels) * width, 8)
             if m is C2fAttn:
                 args[1] = make_divisible(min(args[1], max_channels // 2) * width, 8)  # embed channels
                 args[2] = int(
                     max(round(min(args[2], max_channels // 2 // 32)) * width, 1) if args[2] > 1 else args[2]
                 )  # num heads
 
-            args = [c1, c2, *args[1:]]
+            args = [c1, channel_out, *args[1:]]
             if m in {BottleneckCSP, C1, C2, C2f, C2fAttn, C3, C3TR, C3Ghost, C3x, RepC3}:
                 args.insert(2, n)  # number of repeats
                 n = 1
         elif m is AIFI:
-            args = [ch[f], *args]
+            args = [channel_middle[f], *args]
         elif m in {HGStem, HGBlock}:
-            c1, cm, c2 = ch[f], args[0], args[1]
-            args = [c1, cm, c2, *args[2:]]
+            c1, cm, channel_out = channel_middle[f], args[0], args[1]
+            args = [c1, cm, channel_out, *args[2:]]
             if m is HGBlock:
                 args.insert(4, n)  # number of repeats
                 n = 1
         elif m is ResNetLayer:
-            c2 = args[1] if args[3] else args[1] * 4
+            channel_out = args[1] if args[3] else args[1] * 4
         elif m is nn.BatchNorm2d:
-            args = [ch[f]]
+            args = [channel_middle[f]]
         elif m is Concat:
-            c2 = sum(ch[x] for x in f)
+            channel_out = sum(channel_middle[x] for x in f)
         elif m in {Detect, WorldDetect, Segment, Pose, OBB, ImagePoolingAttn}:
-            args.append([ch[x] for x in f])
+            args.append([channel_middle[x] for x in f])
             if m is Segment:
                 args[2] = make_divisible(min(args[2], max_channels) * width, 8)
         elif m is RTDETRDecoder:  # special case, channels arg must be passed in index 1
-            args.insert(1, [ch[x] for x in f])
+            args.insert(1, [channel_middle[x] for x in f])
         elif m is CBLinear:
-            c2 = args[0]
-            c1 = ch[f]
-            args = [c1, c2, *args[1:]]
+            channel_out = args[0]
+            c1 = channel_middle[f]
+            args = [c1, channel_out, *args[1:]]
         elif m is CBFuse:
-            c2 = ch[f[-1]]
+            channel_out = channel_middle[f[-1]]
+        elif m is EMAttention:
+            channel_out = channel_middle[f]
+            args = [channel_middle[f], *args]
+        elif m is PreProcessorFold:
+            channel_out = channel_middle[f]
+            args = [channel_input, channel_out]
+
         else:
-            c2 = ch[f]
+            channel_out = channel_middle[f]
 
         m_ = nn.Sequential(*(m(*args) for _ in range(n))) if n > 1 else m(*args)  # module
         t = str(m)[8:-2].replace("__main__.", "")  # module type
@@ -937,8 +953,8 @@ def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
         save.extend(x % i for x in ([f] if isinstance(f, int) else f) if x != -1)  # append to savelist
         layers.append(m_)
         if i == 0:
-            ch = []
-        ch.append(c2)
+            channel_middle = []
+        channel_middle.append(channel_out)
     return nn.Sequential(*layers), sorted(save)
 
 

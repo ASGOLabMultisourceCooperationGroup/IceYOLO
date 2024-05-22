@@ -214,12 +214,12 @@ def coco80_to_coco91_class():
 
 
 def convert_coco(
-    labels_dir="../coco/annotations/",
-    save_dir="coco_converted/",
-    use_segments=False,
-    use_keypoints=False,
-    cls91to80=True,
-    lvis=False,
+        labels_dir="../coco/annotations/",
+        save_dir="coco_converted/",
+        use_segments=False,
+        use_keypoints=False,
+        cls91to80=True,
+        lvis=False,
 ):
     """
     Converts COCO dataset annotations to a YOLO annotation format  suitable for training YOLO models.
@@ -485,7 +485,7 @@ def merge_multi_segment(segments):
                     s.append(segments[i])
                 else:
                     idx = [0, idx[1] - idx[0]]
-                    s.append(segments[i][idx[0] : idx[1] + 1])
+                    s.append(segments[i][idx[0]: idx[1] + 1])
 
         else:
             for i in range(len(idx_list) - 1, -1, -1):
