@@ -12,8 +12,8 @@ import torch
 from ultralytics.utils import LOGGER, SimpleClass, TryExcept, plt_settings
 
 OKS_SIGMA = (
-    np.array([0.26, 0.25, 0.25, 0.35, 0.35, 0.79, 0.79, 0.72, 0.72, 0.62, 0.62, 1.07, 1.07, 0.87, 0.87, 0.89, 0.89])
-    / 10.0
+        np.array([0.26, 0.25, 0.25, 0.35, 0.35, 0.79, 0.79, 0.72, 0.72, 0.62, 0.62, 1.07, 1.07, 0.87, 0.87, 0.89, 0.89])
+        / 10.0
 )
 
 
@@ -37,7 +37,7 @@ def bbox_ioa(box1, box2, iou=False, eps=1e-7):
 
     # Intersection area
     inter_area = (np.minimum(b1_x2[:, None], b2_x2) - np.maximum(b1_x1[:, None], b2_x1)).clip(0) * (
-        np.minimum(b1_y2[:, None], b2_y2) - np.maximum(b1_y1[:, None], b2_y1)
+            np.minimum(b1_y2[:, None], b2_y2) - np.maximum(b1_y1[:, None], b2_y1)
     ).clip(0)
 
     # Box2 area
@@ -104,7 +104,7 @@ def bbox_iou(box1, box2, xywh=True, GIoU=False, DIoU=False, CIoU=False, eps=1e-7
 
     # Intersection area
     inter = (b1_x2.minimum(b2_x2) - b1_x1.maximum(b2_x1)).clamp_(0) * (
-        b1_y2.minimum(b2_y2) - b1_y1.maximum(b2_y1)
+            b1_y2.minimum(b2_y2) - b1_y1.maximum(b2_y1)
     ).clamp_(0)
 
     # Union Area
@@ -118,10 +118,10 @@ def bbox_iou(box1, box2, xywh=True, GIoU=False, DIoU=False, CIoU=False, eps=1e-7
         if CIoU or DIoU:  # Distance or Complete IoU https://arxiv.org/abs/1911.08287v1
             c2 = cw.pow(2) + ch.pow(2) + eps  # convex diagonal squared
             rho2 = (
-                (b2_x1 + b2_x2 - b1_x1 - b1_x2).pow(2) + (b2_y1 + b2_y2 - b1_y1 - b1_y2).pow(2)
-            ) / 4  # center dist**2
+                           (b2_x1 + b2_x2 - b1_x1 - b1_x2).pow(2) + (b2_y1 + b2_y2 - b1_y1 - b1_y2).pow(2)
+                   ) / 4  # center dist**2
             if CIoU:  # https://github.com/Zzh-tju/DIoU-SSD-pytorch/blob/master/utils/box/box_utils.py#L47
-                v = (4 / math.pi**2) * ((w2 / h2).atan() - (w1 / h1).atan()).pow(2)
+                v = (4 / math.pi ** 2) * ((w2 / h2).atan() - (w1 / h1).atan()).pow(2)
                 with torch.no_grad():
                     alpha = v / (v - iou + (1 + eps))
                 return iou - (rho2 / c2 + v * alpha)  # CIoU
@@ -210,21 +210,22 @@ def probiou(obb1, obb2, CIoU=False, eps=1e-7):
     a2, b2, c2 = _get_covariance_matrix(obb2)
 
     t1 = (
-        ((a1 + a2) * (y1 - y2).pow(2) + (b1 + b2) * (x1 - x2).pow(2)) / ((a1 + a2) * (b1 + b2) - (c1 + c2).pow(2) + eps)
-    ) * 0.25
+                 ((a1 + a2) * (y1 - y2).pow(2) + (b1 + b2) * (x1 - x2).pow(2)) / (
+                 (a1 + a2) * (b1 + b2) - (c1 + c2).pow(2) + eps)
+         ) * 0.25
     t2 = (((c1 + c2) * (x2 - x1) * (y1 - y2)) / ((a1 + a2) * (b1 + b2) - (c1 + c2).pow(2) + eps)) * 0.5
     t3 = (
-        ((a1 + a2) * (b1 + b2) - (c1 + c2).pow(2))
-        / (4 * ((a1 * b1 - c1.pow(2)).clamp_(0) * (a2 * b2 - c2.pow(2)).clamp_(0)).sqrt() + eps)
-        + eps
-    ).log() * 0.5
+                 ((a1 + a2) * (b1 + b2) - (c1 + c2).pow(2))
+                 / (4 * ((a1 * b1 - c1.pow(2)).clamp_(0) * (a2 * b2 - c2.pow(2)).clamp_(0)).sqrt() + eps)
+                 + eps
+         ).log() * 0.5
     bd = (t1 + t2 + t3).clamp(eps, 100.0)
     hd = (1.0 - (-bd).exp() + eps).sqrt()
     iou = 1 - hd
     if CIoU:  # only include the wh aspect ratio part
         w1, h1 = obb1[..., 2:4].split(1, dim=-1)
         w2, h2 = obb2[..., 2:4].split(1, dim=-1)
-        v = (4 / math.pi**2) * ((w2 / h2).atan() - (w1 / h1).atan()).pow(2)
+        v = (4 / math.pi ** 2) * ((w2 / h2).atan() - (w1 / h1).atan()).pow(2)
         with torch.no_grad():
             alpha = v / (v - iou + (1 + eps))
         return iou - v * alpha  # CIoU
@@ -252,14 +253,15 @@ def batch_probiou(obb1, obb2, eps=1e-7):
     a2, b2, c2 = (x.squeeze(-1)[None] for x in _get_covariance_matrix(obb2))
 
     t1 = (
-        ((a1 + a2) * (y1 - y2).pow(2) + (b1 + b2) * (x1 - x2).pow(2)) / ((a1 + a2) * (b1 + b2) - (c1 + c2).pow(2) + eps)
-    ) * 0.25
+                 ((a1 + a2) * (y1 - y2).pow(2) + (b1 + b2) * (x1 - x2).pow(2)) / (
+                 (a1 + a2) * (b1 + b2) - (c1 + c2).pow(2) + eps)
+         ) * 0.25
     t2 = (((c1 + c2) * (x2 - x1) * (y1 - y2)) / ((a1 + a2) * (b1 + b2) - (c1 + c2).pow(2) + eps)) * 0.5
     t3 = (
-        ((a1 + a2) * (b1 + b2) - (c1 + c2).pow(2))
-        / (4 * ((a1 * b1 - c1.pow(2)).clamp_(0) * (a2 * b2 - c2.pow(2)).clamp_(0)).sqrt() + eps)
-        + eps
-    ).log() * 0.5
+                 ((a1 + a2) * (b1 + b2) - (c1 + c2).pow(2))
+                 / (4 * ((a1 * b1 - c1.pow(2)).clamp_(0) * (a2 * b2 - c2.pow(2)).clamp_(0)).sqrt() + eps)
+                 + eps
+         ).log() * 0.5
     bd = (t1 + t2 + t3).clamp(eps, 100.0)
     hd = (1.0 - (-bd).exp() + eps).sqrt()
     return 1 - hd
@@ -527,7 +529,7 @@ def compute_ap(recall, precision):
 
 
 def ap_per_class(
-    tp, conf, pred_cls, target_cls, plot=False, on_plot=None, save_dir=Path(), names=(), eps=1e-16, prefix=""
+        tp, conf, pred_cls, target_cls, plot=False, on_plot=None, save_dir=Path(), names=(), eps=1e-16, prefix=""
 ):
     """
     Computes the average precision per class for object detection evaluation.
@@ -929,6 +931,7 @@ class SegmentMetrics(SimpleClass):
         self.seg = Metric()
         self.speed = {"preprocess": 0.0, "inference": 0.0, "loss": 0.0, "postprocess": 0.0}
         self.task = "segment"
+        self.iou = None  # init miou list
 
     def process(self, tp, tp_m, conf, pred_cls, target_cls):
         """
@@ -969,10 +972,13 @@ class SegmentMetrics(SimpleClass):
         self.box.nc = len(self.names)
         self.box.update(results_box)
 
+        if self.iou:
+            self.iou = [self.iou[i] for i in self.ap_class_index]
+
     @property
     def keys(self):
         """Returns a list of keys for accessing metrics."""
-        return [
+        keys = [
             "metrics/precision(B)",
             "metrics/recall(B)",
             "metrics/mAP50(B)",
@@ -982,14 +988,19 @@ class SegmentMetrics(SimpleClass):
             "metrics/mAP50(M)",
             "metrics/mAP50-95(M)",
         ]
+        return keys + ["metrics/mIoU"] if self.iou else keys
 
     def mean_results(self):
         """Return the mean metrics for bounding box and segmentation results."""
-        return self.box.mean_results() + self.seg.mean_results()
+        # return self.box.mean_results() + self.seg.mean_results()
+        mean_results = self.box.mean_results() + self.seg.mean_results()
+        return mean_results + [self.mIoU] if self.iou else mean_results
 
     def class_result(self, i):
         """Returns classification results for a specified class index."""
-        return self.box.class_result(i) + self.seg.class_result(i)
+        # return self.box.class_result(i) + self.seg.class_result(i)
+        class_result = self.box.class_result(i) + self.seg.class_result(i)
+        return class_result + (self.iou[i],) if self.iou else class_result
 
     @property
     def maps(self):
@@ -1029,6 +1040,10 @@ class SegmentMetrics(SimpleClass):
     def curves_results(self):
         """Returns dictionary of computed performance metrics and statistics."""
         return self.box.curves_results + self.seg.curves_results
+
+    @property
+    def mIoU(self):
+        return sum(self.iou) / len(self.iou) if self.iou else None
 
 
 class PoseMetrics(SegmentMetrics):
