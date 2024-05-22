@@ -160,20 +160,20 @@ def nms_rotated(boxes, scores, threshold=0.45):
 
 
 def non_max_suppression(
-    prediction,
-    conf_thres=0.25,
-    iou_thres=0.45,
-    classes=None,
-    agnostic=False,
-    multi_label=False,
-    labels=(),
-    max_det=300,
-    nc=0,  # number of classes (optional)
-    max_time_img=0.05,
-    max_nms=30000,
-    max_wh=7680,
-    in_place=True,
-    rotated=False,
+        prediction,
+        conf_thres=0.25,
+        iou_thres=0.45,
+        classes=None,
+        agnostic=False,
+        multi_label=False,
+        labels=(),
+        max_det=300,
+        nc=0,  # number of classes (optional)
+        max_time_img=0.05,
+        max_nms=30000,
+        max_wh=7680,
+        in_place=True,
+        rotated=False,
 ):
     """
     Perform non-maximum suppression (NMS) on a set of boxes, with support for masks and multiple labels per box.
@@ -560,7 +560,7 @@ def xywhr2xyxyxyxy(rboxes):
     cos, sin = (np.cos, np.sin) if is_numpy else (torch.cos, torch.sin)
 
     ctr = rboxes[..., :2]
-    w, h, angle = (rboxes[..., i : i + 1] for i in range(2, 5))
+    w, h, angle = (rboxes[..., i: i + 1] for i in range(2, 5))
     cos_value, sin_value = cos(angle), sin(angle)
     vec1 = [w / 2 * cos_value, w / 2 * sin_value]
     vec2 = [-h / 2 * sin_value, h / 2 * cos_value]
@@ -606,25 +606,100 @@ def segments2boxes(segments):
     return xyxy2xywh(np.array(boxes))  # cls, xywh
 
 
+import heapq
+
+
+class Segment:
+    def __init__(self, p1, p2, num):
+        self.p1 = p1
+        self.p2 = p2
+        self.num = num
+        self.cnt_point = 1
+        self.len = np.hypot(p2[0] - p1[0], p2[1] - p1[1])
+        self.w = self.len / self.cnt_point
+
+    def __lt__(self, other):
+        return self.w > other.w
+
+    def add_point(self):
+        self.cnt_point += 1
+        self.w = self.len / self.cnt_point
+
+
+def distribute_points(q, n):
+    new_points = []
+    while q:
+        segment = q.pop(0)
+        new_points.append(segment.p1.tolist())
+        for i in range(segment.cnt_point):
+            if segment.cnt_point > 1:
+                t = i / (segment.cnt_point - 1)
+            else:
+                if len(new_points) < n - 1 - len(q):
+                    t = 0.5
+                else:
+                    continue
+            new_point = [segment.p1[0] + t * (segment.p2[0] - segment.p1[0]),
+                         segment.p1[1] + t * (segment.p2[1] - segment.p1[1])]
+            new_points.append(new_point)
+    return new_points
+
+
+def resample_segment(points, n):
+    # points is a list of points with shape (n, 2)
+    # m is the desired total number of points
+    q = []
+
+    # For each pair of points
+    for i in range(len(points) - 1):
+        # Create a segment and add it to the queue
+        segment = Segment(points[i], points[i + 1], i + 1)
+        heapq.heappush(q, segment)
+
+    while sum(segment.cnt_point for segment in q) < n - len(points):
+        segment = heapq.heappop(q)
+        segment.add_point()
+        heapq.heappush(q, segment)
+
+    while len(q) > n - 1:
+        heapq.heappop(q)
+
+    q.sort(key=lambda x: x.num)
+    result = distribute_points(q, n)
+    result.append(points[-1])
+    return result
+
+
 def resample_segments(segments, n=1000):
-    """
-    Inputs a list of segments (n,2) and returns a list of segments (n,2) up-sampled to n points each.
+    resampled = []
+    i = 0
+    for s in segments:
+        result = resample_segment(s, n)
+        assert len(result) == n
+        resampled.append(np.stack(result, axis=0))
+        i += 1
+    return resampled
 
-    Args:
-        segments (list): a list of (n,2) arrays, where n is the number of points in the segment.
-        n (int): number of points to resample the segment to. Defaults to 1000
 
-    Returns:
-        segments (list): the resampled segments.
-    """
-    for i, s in enumerate(segments):
-        s = np.concatenate((s, s[0:1, :]), axis=0)
-        x = np.linspace(0, len(s) - 1, n)
-        xp = np.arange(len(s))
-        segments[i] = (
-            np.concatenate([np.interp(x, xp, s[:, i]) for i in range(2)], dtype=np.float32).reshape(2, -1).T
-        )  # segment xy
-    return segments
+# def resample_segments(segments, n=1000):
+#     """
+#     Inputs a list of segments (n,2) and returns a list of segments (n,2) up-sampled to n points each.
+#
+#     Args:
+#         segments (list): a list of (n,2) arrays, where n is the number of points in the segment.
+#         n (int): number of points to resample the segment to. Defaults to 1000
+#
+#     Returns:
+#         segments (list): the resampled segments.
+#     """
+#     for i, s in enumerate(segments):
+#         s = np.concatenate((s, s[0:1, :]), axis=0)
+#         x = np.linspace(0, len(s) - 1, n)
+#         xp = np.arange(len(s))
+#         segments[i] = (
+#             np.concatenate([np.interp(x, xp, s[:, i]) for i in range(2)], dtype=np.float32).reshape(2, -1).T
+#         )  # segment xy
+#     return segments
 
 
 def crop_mask(masks, boxes):
