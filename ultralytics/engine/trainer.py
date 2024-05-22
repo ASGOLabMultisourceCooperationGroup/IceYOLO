@@ -8,16 +8,15 @@ Usage:
 
 import gc
 import math
+import numpy as np
 import os
 import subprocess
 import time
+import torch
 import warnings
 from copy import deepcopy
 from datetime import datetime, timedelta
 from pathlib import Path
-
-import numpy as np
-import torch
 from torch import distributed as dist
 from torch import nn, optim
 
@@ -416,7 +415,8 @@ class BaseTrainer:
 
                 # Validation
                 if (
-                        self.args.val and self.epochs % self.args.val_period == 0) or final_epoch or self.stopper.possible_stop or self.stop:
+                        self.args.val and (
+                        self.epochs + 1) % self.args.val_period == 0) or final_epoch or self.stopper.possible_stop or self.stop:
                     self.metrics, self.fitness = self.validate()
                 self.save_metrics(metrics={**self.label_loss_items(self.tloss), **self.metrics, **self.lr})
                 self.stop |= self.stopper(epoch + 1, self.fitness) or final_epoch
