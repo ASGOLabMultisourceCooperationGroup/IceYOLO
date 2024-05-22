@@ -40,6 +40,10 @@ allow-direct-references = true
 packages = ["src/yuka"]
 
 [[tool.rye.sources]]
+name = "default"
+url = "https://pypi.tuna.tsinghua.edu.cn/simple"
+
+[[tool.rye.sources]]
 name = "torch"
-url = "https://mirror.sjtu.edu.cn/pytorch-wheels/cu121"
+url = "https://mirrors.aliyun.com/pytorch-wheels/cu121"
 type = "index"
