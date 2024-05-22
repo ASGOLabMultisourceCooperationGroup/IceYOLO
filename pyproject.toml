@@ -7,9 +7,12 @@ authors = [
 ]
 readme = "README.md"
 requires-python = ">= 3.8"
-
-[tool.rye.workspace]
-members = ["ultralytics"]
+dependencies = [
+    "ultralytics @ file:///${PROJECT_ROOT}/ultralytics",
+]
 
 [tool.rye]
 virtual = true
+
+[tool.rye.workspace]
+members = ["ultralytics"]

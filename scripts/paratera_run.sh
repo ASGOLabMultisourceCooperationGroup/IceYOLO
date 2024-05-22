@@ -28,7 +28,5 @@ module unload cuda/9.2
 
 module load cuda/12.2
 
-rye add ultralytics --path ~/run/yuka
-
 source .venv/bin/activate
 python -u train.py
