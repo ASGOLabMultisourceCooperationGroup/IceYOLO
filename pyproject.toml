@@ -12,8 +12,8 @@ dependencies = [
     "pyyaml>=5.3.1",
     "requests>=2.23.0",
     "scipy>=1.4.1",
-    "torch>=2.3.0",
-    "torchvision>=0.18.0",
+    "torch==2.3.0+cu121",
+    "torchvision==0.18.0+cu121",
     "tqdm>=4.64.0",
     "psutil",
     "py-cpuinfo",
@@ -43,5 +43,5 @@ url = "https://pypi.tuna.tsinghua.edu.cn/simple"
 
 [[tool.rye.sources]]
 name = "torch"
-url = "https://download.pytorch.org/whl/cu121"
-type = "index"
+url = "https://mirror.sjtu.edu.cn/pytorch-wheels/torch_stable.html"
+type = "find-links"
