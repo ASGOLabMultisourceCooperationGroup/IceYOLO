@@ -1,6 +1,10 @@
+from preprocessor.preprocessor import PreProcessor
 from ultralytics import YOLO
 
-model = YOLO("yolov8x-seg-original.yaml")
+backbone_model = "yolov8x-seg-full.yaml"
+
+model = YOLO(backbone_model)
+# adapter = PreProcessor()
 
 model.train(
     data="datasets/dataset_yrcc2.yaml",
@@ -12,5 +16,6 @@ model.train(
     save_period=50,
     # workers=0,
     project="run",
+    name="full",
     mosaic=0
 )
