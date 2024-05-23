@@ -8,4 +8,5 @@ model.val(
     imgsz=768,
     device="0",
     workers=0,
+    save_json=True,
 )
