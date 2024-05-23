@@ -170,3 +170,4 @@ requirements-dev.lock
 requirements.lock
 
 run/
+weights/

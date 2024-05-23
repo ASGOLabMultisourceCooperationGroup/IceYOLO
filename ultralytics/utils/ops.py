@@ -662,7 +662,7 @@ def resample_segment(points, n):
         heapq.heappush(q, segment)
 
     while len(q) > n - 1:
-        heapq.heappop(q)
+        q.pop()
 
     q.sort(key=lambda x: x.num)
     result = distribute_points(q, n)
