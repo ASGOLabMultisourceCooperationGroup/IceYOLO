@@ -129,7 +129,7 @@ class BasePredictor:
         im = im.to(self.device)
         im = im.half() if self.model.fp16 else im.float()  # uint8 to fp16/32
         if not_tensor:
-            im /= 255  # 0 - 255 to 0.0 - 1.0
+            im /= self.args.normalize  # 0 - 255 to 0.0 - 1.0
         return im
 
     def inference(self, im, *args, **kwargs):
@@ -225,7 +225,7 @@ class BasePredictor:
 
             # Warmup model
             if not self.done_warmup:
-                self.model.warmup(imgsz=(1 if self.model.pt or self.model.triton else self.dataset.bs, 3, *self.imgsz))
+                self.model.warmup(imgsz=(1 if self.model.pt or self.model.triton else self.dataset.bs, self.args.input_channel, *self.imgsz))
                 self.done_warmup = True
 
             self.seen, self.windows, self.batch = 0, [], None
