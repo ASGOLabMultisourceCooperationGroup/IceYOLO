@@ -8,6 +8,7 @@ model.predict(
     batch=10,
     device="0",
     save=True,
+    stream=True,
     project="predict",
     name="2024new"
 )
