@@ -47,7 +47,7 @@ from ultralytics.nn.modules import (
     ResNetLayer,
     RTDETRDecoder,
     Segment,
-    WorldDetect, EMAttention, PreProcessorFold,
+    WorldDetect, EMAttention, PreProcessorFold, CBAM,
 )
 from ultralytics.utils import DEFAULT_CFG_DICT, DEFAULT_CFG_KEYS, LOGGER, colorstr, emojis, yaml_load
 from ultralytics.utils.checks import check_requirements, check_suffix, check_yaml
@@ -940,7 +940,11 @@ def parse_model(d, channel_middle, channel_input=3, verbose=True):  # model_dict
         elif m is PreProcessorFold:
             channel_out = channel_middle[f]
             args = [channel_input, channel_out]
-
+        elif m in {CBAM}:
+            c1, c2 = channel_middle[f], args[0]
+            if c2 != nc:
+                c2 = make_divisible(min(c2, max_channels) * width, 8)
+            args = [c1, *args[1:]]
         else:
             channel_out = channel_middle[f]
 
