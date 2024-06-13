@@ -670,29 +670,29 @@ def resample_segment(points, n):
     return result
 
 
-# def resample_segments(segments, n=1000):
-#     resampled = []
-#     i = 0
-#     for s in segments:
-#         result = resample_segment(s, n)
-#         assert len(result) == n
-#         resampled.append(np.stack(result, axis=0))
-#         i += 1
-#     return resampled
-
-
 def resample_segments(segments, n=1000):
-    for i, s in enumerate(segments):
-        s = np.concatenate((s, s[0:1, :]), axis=0) # concat the first point to the end
-        x = np.linspace(0, len(s) - 1, n) # generate a float line space from 0 to len(s)-1 into n
-        xp = np.arange(len(s)) # generate a integer array from 0 to len(s)-1
-        result = []
-        for j in range(2):
-            result.append(np.interp(x, xp, s[:, j]))
-        segments[i] = (
-            np.concatenate(result, dtype=np.float32).reshape(2, -1).T
-        )  # segment xy
-    return segments
+    resampled = []
+    i = 0
+    for s in segments:
+        result = resample_segment(s, n)
+        assert len(result) == n
+        resampled.append(np.stack(result, axis=0))
+        i += 1
+    return resampled
+
+
+# def resample_segments(segments, n=1000):
+#     for i, s in enumerate(segments):
+#         s = np.concatenate((s, s[0:1, :]), axis=0) # concat the first point to the end
+#         x = np.linspace(0, len(s) - 1, n) # generate a float line space from 0 to len(s)-1 into n
+#         xp = np.arange(len(s)) # generate a integer array from 0 to len(s)-1
+#         result = []
+#         for j in range(2):
+#             result.append(np.interp(x, xp, s[:, j]))
+#         segments[i] = (
+#             np.concatenate(result, dtype=np.float32).reshape(2, -1).T
+#         )  # segment xy
+#     return segments
 
 
 def crop_mask(masks, boxes):
