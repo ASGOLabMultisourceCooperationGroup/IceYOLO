@@ -63,7 +63,7 @@ from .conv import (
     SpatialAttention,
 )
 from .custom import (
-    EMAttention, PreProcessorFold, IceCBAM
+    EMAttention, PreProcessorFold, IceFusion
 )
 from .head import OBB, Classify, Detect, Pose, RTDETRDecoder, Segment, WorldDetect
 from .transformer import (
@@ -140,5 +140,5 @@ __all__ = (
     "Silence",
     "EMAttention",
     "PreProcessorFold",
-    "IceCBAM"
+    "IceFusion"
 )
