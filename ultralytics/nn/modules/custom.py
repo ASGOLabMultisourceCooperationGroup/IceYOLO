@@ -49,8 +49,6 @@ class IceFusion(nn.Module):
         channel = min(c1, c2)
         self.channel_down_conv = nn.Conv2d(c2, channel, kernel_size=1)
         self.hw_upsample = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
-
-        self.channel_up_conv = nn.Conv2d(channel, 640, kernel_size=1)
         self.d = max(L, channel // reduction)
         # 将全局向量降维
         self.fc = nn.Linear(channel, self.d)
