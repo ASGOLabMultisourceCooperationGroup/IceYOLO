@@ -275,6 +275,18 @@ class RepConv(nn.Module):
             self.__delattr__("id_tensor")
 
 
+# class CBAM(nn.Module):
+#     def __init__(self, channels, reduction=16):
+#         super(CBAM, self).__init__()
+#         self.channel_attention = ChannelAttention(channels, reduction)
+#         self.spatial_attention = SpatialAttention()
+#
+#     def forward(self, x):
+#         x = self.channel_attention(x) * x
+#         x = self.spatial_attention(x) * x
+#         return x
+
+
 class CBAM(nn.Module):
     def __init__(self, channels, reduction=16):
         super(CBAM, self).__init__()
@@ -282,9 +294,9 @@ class CBAM(nn.Module):
         self.spatial_attention = SpatialAttention()
 
     def forward(self, x):
-        x = self.channel_attention(x) * x
-        x = self.spatial_attention(x) * x
-        return x
+        channel_out = self.channel_attention(x) * x
+        spacial_out = self.spatial_attention(x) * x
+        return channel_out + spacial_out
 
 
 class ChannelAttention(nn.Module):
