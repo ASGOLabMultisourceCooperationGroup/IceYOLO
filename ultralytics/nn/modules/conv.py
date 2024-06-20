@@ -275,18 +275,6 @@ class RepConv(nn.Module):
             self.__delattr__("id_tensor")
 
 
-# class CBAM(nn.Module):
-#     def __init__(self, channels, reduction=16):
-#         super(CBAM, self).__init__()
-#         self.channel_attention = ChannelAttention(channels, reduction)
-#         self.spatial_attention = SpatialAttention()
-#
-#     def forward(self, x):
-#         x = self.channel_attention(x) * x
-#         x = self.spatial_attention(x) * x
-#         return x
-
-
 class CBAM(nn.Module):
     def __init__(self, channels, reduction=16):
         super(CBAM, self).__init__()
@@ -294,10 +282,9 @@ class CBAM(nn.Module):
         self.spatial_attention = SpatialAttention()
 
     def forward(self, x):
-        channel_out = self.channel_attention(x) * x
-        spacial_out = self.spatial_attention(x) * x
-        return channel_out + spacial_out
-
+        x = self.channel_attention(x) * x
+        x = self.spatial_attention(x) * x
+        return x
 
 class ChannelAttention(nn.Module):
     def __init__(self, in_planes, reduction=16):
@@ -306,6 +293,7 @@ class ChannelAttention(nn.Module):
         self.max_pool = nn.AdaptiveMaxPool2d(1)
         self.fc = nn.Sequential(
             nn.Conv2d(in_planes, in_planes // reduction, 1, bias=False),
+            nn.BatchNorm2d(in_planes // reduction),
             nn.ReLU(),
             nn.Conv2d(in_planes // reduction, in_planes, 1, bias=False)
         )
