@@ -278,45 +278,31 @@ class RepConv(nn.Module):
 class CBAM(nn.Module):
     def __init__(self, channels, reduction=16):
         super(CBAM, self).__init__()
-        self.channel_attention_cw = ChannelAttention(channels, reduction)
-        self.channel_attention_hw = ChannelAttention(channels, reduction)
+        self.channel_attention = ChannelAttention(channels, reduction)
         self.spatial_attention = SpatialAttention()
 
     def forward(self, x):
-        cw = x.permute(0, 2, 1, 3).contiguous()
-        cw = self.channel_attention_cw(cw) * cw
-        cw = cw.permute(0, 2, 1, 3).contiguous()
-
-        hw = x.permute(0, 3, 2, 1).contiguous()
-        hw = self.channel_attention_hw(hw) * hw
-        hw = hw.permute(0, 3, 2, 1).contiguous()
-
-        x = cw + hw
+        x = self.channel_attention(x) * x
         x = self.spatial_attention(x) * x
         return x
-
-
-class ZPool(nn.Module):
-    def forward(self, x):
-        return torch.cat(
-            (torch.max(x, 1)[0].unsqueeze(1), torch.mean(x, 1).unsqueeze(1)), dim=1
-        )
 
 
 class ChannelAttention(nn.Module):
     def __init__(self, in_planes, reduction=16):
         super(ChannelAttention, self).__init__()
-        self.compress = ZPool()
+        self.avg_pool = nn.AdaptiveAvgPool2d(1)
+        self.max_pool = nn.AdaptiveMaxPool2d(1)
         self.fc = nn.Sequential(
-            nn.Conv2d(2, 1, 1, bias=False),
+            nn.Conv2d(in_planes, in_planes // reduction, 1, bias=False, groups=4),
             nn.ReLU(),
-            nn.BatchNorm2d(1)
+            nn.Conv2d(in_planes // reduction, in_planes, 1, bias=False, groups=4),
         )
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
-        compressed = self.compress(x)
-        out = self.fc(compressed)
+        avg_out = self.fc(self.avg_pool(x))
+        max_out = self.fc(self.max_pool(x))
+        out = avg_out + max_out
         return self.sigmoid(out)
 
 
