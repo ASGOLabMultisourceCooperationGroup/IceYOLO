@@ -278,12 +278,12 @@ class RepConv(nn.Module):
 class CBAM(nn.Module):
     def __init__(self, channels, reduction=16):
         super(CBAM, self).__init__()
-        # self.channel_attention = ChannelAttention(channels, reduction)
-        self.spatial_attention = SpatialAttention()
+        self.channel_attention = ChannelAttention(channels, reduction)
+        # self.spatial_attention = SpatialAttention()
 
     def forward(self, x):
-        # x = self.channel_attention(x) * x
-        x = self.spatial_attention(x) * x
+        x = self.channel_attention(x) * x
+        # x = self.spatial_attention(x) * x
         return x
 
 
