@@ -278,10 +278,12 @@ class RepConv(nn.Module):
 class CBAM(nn.Module):
     def __init__(self, channels, reduction=16):
         super(CBAM, self).__init__()
+        self.channel_norm = nn.BatchNorm2d(channels)
         self.channel_attention = ChannelAttention(channels, reduction)
         self.spatial_attention = SpatialAttention()
 
     def forward(self, x):
+        x = self.channel_norm(x)
         x = self.channel_attention(x) * x
         x = self.spatial_attention(x) * x
         return x
@@ -293,9 +295,9 @@ class ChannelAttention(nn.Module):
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
         self.max_pool = nn.AdaptiveMaxPool2d(1)
         self.fc = nn.Sequential(
-            nn.Conv2d(in_planes, in_planes // reduction, 1, bias=False, groups=4),
+            nn.Conv2d(in_planes, in_planes // reduction, 1, bias=False),
             nn.ReLU(),
-            nn.Conv2d(in_planes // reduction, in_planes, 1, bias=False, groups=4),
+            nn.Conv2d(in_planes // reduction, in_planes, 1, bias=False),
         )
         self.sigmoid = nn.Sigmoid()
 
