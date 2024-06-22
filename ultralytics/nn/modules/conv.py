@@ -23,8 +23,6 @@ __all__ = (
     "RepConv",
 )
 
-from ultralytics.nn.modules.kan import KANLinear
-
 
 def autopad(k, p=None, d=1):  # kernel, padding, dilation
     """Pad to 'same' shape outputs."""
@@ -294,26 +292,29 @@ class ChannelAttention(nn.Module):
         super(ChannelAttention, self).__init__()
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
         self.max_pool = nn.AdaptiveMaxPool2d(1)
-        # self.fc = nn.Sequential(
-        #     nn.Linear(in_planes, in_planes // reduction, bias=False),
-        #     nn.ReLU(),
-        #     nn.Linear(in_planes // reduction, in_planes, bias=False),
-        # )
+        self.spc = nn.Conv2d(in_planes, in_planes, kernel_size=1, bias=False, groups=4)
         self.fc = nn.Sequential(
-            KANLinear(in_planes, in_planes // reduction),
-            # nn.ReLU(),
-            KANLinear(in_planes // reduction, in_planes),
+            nn.Linear(in_planes, in_planes // reduction, bias=False),
+            nn.ReLU(),
+            nn.Linear(in_planes // reduction, in_planes, bias=False),
         )
+        # self.fc = nn.Sequential(
+        #     KANLinear(in_planes, in_planes // reduction),
+        #     # nn.ReLU(),
+        #     KANLinear(in_planes // reduction, in_planes),
+        # )
         self.sigmoid = nn.Sigmoid()
+        self.softmax = nn.Softmax()
 
     def forward(self, x):
         b, c, _, _ = x.size()
+        x = self.spc(x)
         avg_x = self.avg_pool(x).view(b, c)
         max_x = self.max_pool(x).view(b, c)
         avg_out = self.fc(avg_x)
         max_out = self.fc(max_x)
         out = (avg_out + max_out).view(b, c, 1, 1)
-        return self.sigmoid(out)
+        return self.softmax(self.sigmoid(out))
 
 
 class SpatialAttention(nn.Module):
