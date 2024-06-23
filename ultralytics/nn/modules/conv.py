@@ -302,7 +302,6 @@ class ChannelAttention(nn.Module):
             KANLinear(in_planes, in_planes),
         )
         self.sigmoid = nn.Sigmoid()
-        self.softmax = nn.Softmax()
 
     def forward(self, x):
         b, c, _, _ = x.size()
@@ -311,7 +310,7 @@ class ChannelAttention(nn.Module):
         avg_out = self.fc(avg_x)
         max_out = self.fc(max_x)
         out = (avg_out + max_out).view(b, c, 1, 1)
-        return self.softmax(self.sigmoid(out))
+        return self.sigmoid(out)
 
 
 class SpatialAttention(nn.Module):
