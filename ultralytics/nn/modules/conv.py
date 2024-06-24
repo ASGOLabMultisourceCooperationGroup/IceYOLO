@@ -295,11 +295,8 @@ class ChannelAttention(nn.Module):
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
         self.max_pool = nn.AdaptiveMaxPool2d(1)
         self.fc = nn.Sequential(
-            KANLinear(in_planes, in_planes),
             KANLinear(in_planes, in_planes // reduction),
-            KANLinear(in_planes // reduction, in_planes // reduction),
             KANLinear(in_planes // reduction, in_planes),
-            KANLinear(in_planes, in_planes),
         )
         self.sigmoid = nn.Sigmoid()
 
