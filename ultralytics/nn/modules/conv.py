@@ -306,12 +306,16 @@ class ChannelAttention(nn.Module):
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
-        b, c, _, _ = x.size()
-        avg_x = self.avg_pool(x).view(b, c)
-        max_x = self.max_pool(x).view(b, c)
-        avg_out = self.fc(avg_x)
-        max_out = self.fc(max_x)
-        out = (avg_out + max_out).view(b, c, 1, 1)
+        # b, c, _, _ = x.size()
+        # avg_x = self.avg_pool(x).view(b, c)
+        # max_x = self.max_pool(x).view(b, c)
+        # avg_out = self.fc(avg_x)
+        # max_out = self.fc(max_x)
+        # out = (avg_out + max_out).view(b, c, 1, 1)
+        # return self.sigmoid(out)
+        avg_out = self.fc(self.avg_pool(x))
+        max_out = self.fc(self.max_pool(x))
+        out = avg_out + max_out
         return self.sigmoid(out)
 
 
