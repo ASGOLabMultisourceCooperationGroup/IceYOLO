@@ -133,8 +133,8 @@ class BaseTrainer:
         self.adapters = [Adapter(input_channel) for input_channel in [3, 3, 4, 3]]
         for (i, name, adapter) in zip(range(0, 4), ["yrcc1", "yrcc2", "yrccms", "albert"], self.adapters):
             state_dict = torch.load("weights/adapter_" + name + ".pth")
-            adapter = adapter.load_state_dict(state_dict)
-            adapter = adapter.to(self.device)
+            adapter.load_state_dict(state_dict)
+            adapter.to(self.device)
             adapter.training = False
             self.adapters[i] = adapter
         self.ema = None
