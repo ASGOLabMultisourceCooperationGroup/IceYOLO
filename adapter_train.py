@@ -15,7 +15,8 @@ OUTPUT_CHANNEL = 16
 PATH = "/data/home/scv8591/run/yuka/datasets/dataset_yrcc1/images"
 BATCH = 32
 IMG_SIZE = 768
-EPOCH = 700
+EPOCH = 100
+NORMALIZE = 255
 
 
 class ImageDataset(Dataset):
@@ -37,6 +38,7 @@ class ImageDataset(Dataset):
         # cv2.imshow("Original", im)
         # cv2.waitKey(0)
         image = torch.from_numpy(image).permute(2, 0, 1).float().to("cuda")
+        image /= NORMALIZE
         return image
 
 
