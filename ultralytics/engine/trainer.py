@@ -467,7 +467,7 @@ class BaseTrainer:
             if self.stop:
                 break  # must break all DDP ranks
             epoch += 1
-            sel_dataset = (sel_dataset + 1) % 4
+            sel_dataset = (sel_dataset + 1) % 2
 
         if RANK in {-1, 0}:
             # Do final val with best.pt
