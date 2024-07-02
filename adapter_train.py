@@ -12,8 +12,7 @@ print("Modules loaded")
 NAME = "yrcc1"
 INPUT_CHANNEL = 4
 OUTPUT_CHANNEL = 16
-PROJECT_NAME = "v2"
-PATH = "E:\\卫星数据\\images_4chan\\final"
+PATH = "/data/home/scv8591/run/yuka/datasets/dataset_yrcc1/images"
 BATCH = 32
 IMG_SIZE = 768
 EPOCH = 700
