@@ -53,7 +53,7 @@ print("Data loaded.")
 
 def train():
     model = Adapter(INPUT_CHANNEL).to("cuda")
-    model.training = True
+
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=3,
                                                            threshold=0.01)
@@ -61,6 +61,7 @@ def train():
     epoch_min_loss = float('inf')
     for epoch in range(EPOCH):
         model.train()
+        model.training = True
         batch_count = 0
         epoch_loss = float(0)
         for batch_index, img_input in enumerate(train_dataloader):
@@ -94,6 +95,7 @@ def train():
 
 def val_onflight(model):
     model.eval()
+    model.training = False
     total_loss = float(0)
     batch_count = 0
     loss_func = torch.nn.L1Loss()
