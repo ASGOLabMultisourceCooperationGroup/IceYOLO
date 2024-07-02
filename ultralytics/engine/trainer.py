@@ -8,20 +8,22 @@ Usage:
 
 import gc
 import math
-import numpy as np
 import os
 import subprocess
 import time
-import torch
 import warnings
 from copy import deepcopy
 from datetime import datetime, timedelta
 from pathlib import Path
+
+import numpy as np
+import torch
 from torch import distributed as dist
 from torch import nn, optim
 
 from ultralytics.cfg import get_cfg, get_save_dir
 from ultralytics.data.utils import check_cls_dataset, check_det_dataset
+from ultralytics.nn.modules import Adapter
 from ultralytics.nn.tasks import attempt_load_one_weight, attempt_load_weights
 from ultralytics.utils import (
     DEFAULT_CFG,
@@ -127,6 +129,12 @@ class BaseTrainer:
         # Model and Dataset
         self.model = check_model_file_from_stem(self.args.model)  # add suffix, i.e. yolov8n -> yolov8n.pt
         self.trainset, self.testset = self.get_dataset()
+        # TODO: Add adapter init
+        self.adapters = [Adapter(input_channel) for input_channel in [3, 3, 4, 3]]
+        for (name, adapter) in zip(["yrcc1", "yrcc2", "yrccms", "albert"], self.adapters):
+            state_dict = torch.load("weights/adapter_" + name + ".pt")
+            adapter.load_state_dict(state_dict)
+            adapter.to(self.device)
         self.ema = None
 
         # Optimization utils init
@@ -273,12 +281,14 @@ class BaseTrainer:
 
         # Dataloaders
         batch_size = self.batch_size // max(world_size, 1)
-        self.train_loader = self.get_dataloader(self.trainset, batch_size=batch_size, rank=RANK, mode="train")
+        self.train_loader = [self.get_dataloader(dataset, data, batch_size=batch_size, rank=RANK, mode="train") for
+                             (dataset, data) in
+                             zip(self.trainset, self.data)]
         if RANK in {-1, 0}:
             # Note: When training DOTA dataset, double batch size could get OOM on images with >2000 objects.
-            self.test_loader = self.get_dataloader(
-                self.testset, batch_size=batch_size if self.args.task == "obb" else batch_size * 2, rank=-1, mode="val"
-            )
+            self.test_loader = [self.get_dataloader(
+                dataset, data, batch_size=batch_size if self.args.task == "obb" else batch_size * 2, rank=-1, mode="val"
+            ) for (dataset, data) in zip(self.testset, self.data)]
             self.validator = self.get_validator()
             metric_keys = self.validator.metrics.keys + self.label_loss_items(prefix="val")
             self.metrics = dict(zip(metric_keys, [0] * len(metric_keys)))
@@ -289,7 +299,8 @@ class BaseTrainer:
         # Optimizer
         self.accumulate = max(round(self.args.nbs / self.batch_size), 1)  # accumulate loss before optimizing
         weight_decay = self.args.weight_decay * self.batch_size * self.accumulate / self.args.nbs  # scale weight_decay
-        iterations = math.ceil(len(self.train_loader.dataset) / max(self.batch_size, self.args.nbs)) * self.epochs
+        iterations = math.ceil(sum([len(dataset.dataset) for dataset in self.train_loader]) / max(self.batch_size,
+                                                                                                  self.args.nbs)) * self.epochs
         self.optimizer = self.build_optimizer(
             model=self.model,
             name=self.args.optimizer,
@@ -320,7 +331,7 @@ class BaseTrainer:
         self.run_callbacks("on_train_start")
         LOGGER.info(
             f'Image sizes {self.args.imgsz} train, {self.args.imgsz} val\n'
-            f'Using {self.train_loader.num_workers * (world_size or 1)} dataloader workers\n'
+            f'Using {self.train_loader[0].num_workers * (world_size or 1)} dataloader workers\n'
             f"Logging results to {colorstr('bold', self.save_dir)}\n"
             f'Starting training for ' + (f"{self.args.time} hours..." if self.args.time else f"{self.epochs} epochs...")
         )
@@ -329,6 +340,7 @@ class BaseTrainer:
             self.plot_idx.extend([base_idx, base_idx + 1, base_idx + 2])
         epoch = self.start_epoch
         self.optimizer.zero_grad()  # zero any resumed gradients to ensure stability on train start
+        sel_dataset = 0
         while True:
             self.epoch = epoch
             self.run_callbacks("on_train_epoch_start")
@@ -336,18 +348,20 @@ class BaseTrainer:
                 warnings.simplefilter("ignore")  # suppress 'Detected lr_scheduler.step() before optimizer.step()'
                 self.scheduler.step()
 
+            self.model.model[-1].dataset = sel_dataset
+            self.model.model[-1].nc = self.data[sel_dataset]['nc']
             self.model.train()
             if RANK != -1:
-                self.train_loader.sampler.set_epoch(epoch)
-            pbar = enumerate(self.train_loader)
+                self.train_loader[sel_dataset].sampler.set_epoch(epoch)
+            pbar = enumerate(self.train_loader[sel_dataset])
             # Update dataloader attributes (optional)
             if epoch == (self.epochs - self.args.close_mosaic):
                 self._close_dataloader_mosaic()
-                self.train_loader.reset()
+                self.train_loader[sel_dataset].reset()
 
             if RANK in {-1, 0}:
                 LOGGER.info(self.progress_string())
-                pbar = TQDM(enumerate(self.train_loader), total=nb)
+                pbar = TQDM(enumerate(self.train_loader[sel_dataset]), total=nb)
             self.tloss = None
             for i, batch in pbar:
                 self.run_callbacks("on_train_batch_start")
@@ -450,6 +464,7 @@ class BaseTrainer:
             if self.stop:
                 break  # must break all DDP ranks
             epoch += 1
+            sel_dataset = (sel_dataset + 1) % 4
 
         if RANK in {-1, 0}:
             # Do final val with best.pt
@@ -506,22 +521,30 @@ class BaseTrainer:
 
         Returns None if data format is not recognized.
         """
-        try:
-            if self.args.task == "classify":
-                data = check_cls_dataset(self.args.data)
-            elif self.args.data.split(".")[-1] in {"yaml", "yml"} or self.args.task in {
-                "detect",
-                "segment",
-                "pose",
-                "obb",
-            }:
-                data = check_det_dataset(self.args.data)
-                if "yaml_file" in data:
-                    self.args.data = data["yaml_file"]  # for validating 'yolo train data=url.zip' usage
-        except Exception as e:
-            raise RuntimeError(emojis(f"Dataset '{clean_url(self.args.data)}' error ❌ {e}")) from e
-        self.data = data
-        return data["train"], data.get("val") or data.get("test")
+        self.data = []
+        train_set = []
+        val_set = []
+        for dataset in self.args.data:
+            try:
+                if self.args.task == "classify":
+                    data = check_cls_dataset(dataset)
+                elif dataset.split(".")[-1] in {"yaml", "yml"} or self.args.task in {
+                    "detect",
+                    "segment",
+                    "pose",
+                    "obb",
+                }:
+                    data = check_det_dataset(dataset)
+                    # if "yaml_file" in data:
+                    #         self.args.data = data["yaml_file"]  # for validating 'yolo train data=url.zip' usage
+            except Exception as e:
+                raise RuntimeError(emojis(f"Dataset '{clean_url(dataset)}' error ❌ {e}")) from e
+
+            self.data.append(data)
+            train_set.append(data["train"])
+            val_set.append(data.get("val") or data.get("test"))
+
+        return train_set, val_set
 
     def setup_model(self):
         """Load/create/download model for any task."""
@@ -572,11 +595,11 @@ class BaseTrainer:
         """Returns a NotImplementedError when the get_validator function is called."""
         raise NotImplementedError("get_validator function not implemented in trainer")
 
-    def get_dataloader(self, dataset_path, batch_size=16, rank=0, mode="train"):
+    def get_dataloader(self, data, dataset_path, batch_size=16, rank=0, mode="train"):
         """Returns dataloader derived from torch.data.Dataloader."""
         raise NotImplementedError("get_dataloader function not implemented in trainer")
 
-    def build_dataset(self, img_path, mode="train", batch=None):
+    def build_dataset(self, img_path, data, mode="train", batch=None):
         """Build dataset."""
         raise NotImplementedError("build_dataset function not implemented in trainer")
 

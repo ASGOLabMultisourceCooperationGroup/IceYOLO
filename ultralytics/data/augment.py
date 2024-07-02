@@ -23,7 +23,7 @@ DEFAULT_STD = (1.0, 1.0, 1.0)
 DEFAULT_CROP_FRACTION = 1.0
 
 
-# TODO: we might need a BaseTransform to make all these augments be compatible with both classification and semantic
+# we might need a BaseTransform to make all these augments be compatible with both classification and semantic
 class BaseTransform:
     """
     Base class for image transformations.

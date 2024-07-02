@@ -8,13 +8,12 @@ import torch.nn as nn
 from torch.nn.init import constant_, xavier_uniform_
 
 from ultralytics.utils.tal import TORCH_1_10, dist2bbox, dist2rbox, make_anchors
-
 from .block import DFL, BNContrastiveHead, ContrastiveHead, Proto
 from .conv import Conv
 from .transformer import MLP, DeformableTransformerDecoder, DeformableTransformerDecoderLayer
 from .utils import bias_init_with_prob, linear_init
 
-__all__ = "Detect", "Segment", "Pose", "Classify", "OBB", "RTDETRDecoder"
+__all__ = "Detect", "Segment", "Pose", "Classify", "OBB", "RTDETRDecoder", "MultiSegment"
 
 
 class Detect(nn.Module):
@@ -57,7 +56,7 @@ class Detect(nn.Module):
 
         if self.export and self.format in {"saved_model", "pb", "tflite", "edgetpu", "tfjs"}:  # avoid TF FlexSplitV ops
             box = x_cat[:, : self.reg_max * 4]
-            cls = x_cat[:, self.reg_max * 4 :]
+            cls = x_cat[:, self.reg_max * 4:]
         else:
             box, cls = x_cat.split((self.reg_max * 4, self.nc), 1)
 
@@ -230,7 +229,7 @@ class WorldDetect(Detect):
 
         if self.export and self.format in {"saved_model", "pb", "tflite", "edgetpu", "tfjs"}:  # avoid TF FlexSplitV ops
             box = x_cat[:, : self.reg_max * 4]
-            cls = x_cat[:, self.reg_max * 4 :]
+            cls = x_cat[:, self.reg_max * 4:]
         else:
             box, cls = x_cat.split((self.reg_max * 4, self.nc), 1)
 
@@ -270,23 +269,23 @@ class RTDETRDecoder(nn.Module):
     export = False  # export mode
 
     def __init__(
-        self,
-        nc=80,
-        ch=(512, 1024, 2048),
-        hd=256,  # hidden dim
-        nq=300,  # num queries
-        ndp=4,  # num decoder points
-        nh=8,  # num head
-        ndl=6,  # num decoder layers
-        d_ffn=1024,  # dim of feedforward
-        dropout=0.0,
-        act=nn.ReLU(),
-        eval_idx=-1,
-        # Training args
-        nd=100,  # num denoising
-        label_noise_ratio=0.5,
-        box_noise_scale=1.0,
-        learnt_init_query=False,
+            self,
+            nc=80,
+            ch=(512, 1024, 2048),
+            hd=256,  # hidden dim
+            nq=300,  # num queries
+            ndp=4,  # num decoder points
+            nh=8,  # num head
+            ndl=6,  # num decoder layers
+            d_ffn=1024,  # dim of feedforward
+            dropout=0.0,
+            act=nn.ReLU(),
+            eval_idx=-1,
+            # Training args
+            nd=100,  # num denoising
+            label_noise_ratio=0.5,
+            box_noise_scale=1.0,
+            learnt_init_query=False,
     ):
         """
         Initializes the RTDETRDecoder module with the given parameters.
@@ -398,7 +397,7 @@ class RTDETRDecoder(nn.Module):
 
             valid_WH = torch.tensor([w, h], dtype=dtype, device=device)
             grid_xy = (grid_xy.unsqueeze(0) + 0.5) / valid_WH  # (1, h, w, 2)
-            wh = torch.ones_like(grid_xy, dtype=dtype, device=device) * grid_size * (2.0**i)
+            wh = torch.ones_like(grid_xy, dtype=dtype, device=device) * grid_size * (2.0 ** i)
             anchors.append(torch.cat([grid_xy, wh], -1).view(-1, h * w, 4))  # (1, h*w, 4)
 
         anchors = torch.cat(anchors, 1)  # (1, h*w*nl, 4)
@@ -487,3 +486,47 @@ class RTDETRDecoder(nn.Module):
         xavier_uniform_(self.query_pos_head.layers[1].weight)
         for layer in self.input_proj:
             xavier_uniform_(layer[0].weight)
+
+
+class MultiSegment(nn.Module):
+    """YOLOv8 Segment head for segmentation models."""
+
+    def __init__(self, nc=80, nm=32, npr=256, ch=()):
+        """Initialize the YOLO model attributes such as the number of masks, prototypes, and the convolution layers."""
+        super().__init__()
+        self.nc = nc  # This is used for v8loss arg pass only
+        self.reg_max = 16
+        self.nc_all = [2, 3, 6, 2]
+        self.yrcc1 = Segment(self.nc_all[0], nm, npr, ch)
+        self.yrcc2 = Segment(self.nc_all[1], nm, npr, ch)
+        self.yrccms = Segment(self.nc_all[2], nm, npr, ch)
+        self.albert = Segment(self.nc_all[3], nm, npr, ch)
+
+    def forward(self, x):
+        if self.dataset == 0:
+            return self.yrcc1(x)
+        elif self.dataset == 1:
+            return self.yrcc2(x)
+        elif self.dataset == 2:
+            return self.yrccms(x)
+        elif self.dataset == 3:
+            return self.albert(x)
+        else:
+            raise NotImplementedError
+
+    def bias_init(self):
+        """Initialize Detect() biases, WARNING: requires stride availability."""
+        if self.dataset == 0:
+            self.yrcc1.stride = self.stride
+            self.yrcc1.bias_init()
+        elif self.dataset == 1:
+            self.yrcc2.stride = self.stride
+            self.yrcc2.bias_init()
+        elif self.dataset == 2:
+            self.yrccms.stride = self.stride
+            self.yrccms.bias_init()
+        elif self.dataset == 3:
+            self.albert.stride = self.stride
+            self.albert.bias_init()
+        else:
+            raise NotImplementedError

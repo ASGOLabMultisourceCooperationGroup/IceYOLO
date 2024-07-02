@@ -47,7 +47,7 @@ from ultralytics.nn.modules import (
     ResNetLayer,
     RTDETRDecoder,
     Segment,
-    WorldDetect, EMAttention, PreProcessorFold, CBAM, IceFusion, TripletAttention,
+    WorldDetect, EMAttention, PreProcessorFold, CBAM, IceFusion, TripletAttention, MultiSegment,
 )
 from ultralytics.utils import DEFAULT_CFG_DICT, DEFAULT_CFG_KEYS, LOGGER, colorstr, emojis, yaml_load
 from ultralytics.utils.checks import check_requirements, check_suffix, check_yaml
@@ -302,6 +302,17 @@ class DetectionModel(BaseModel):
             m.stride = torch.tensor([s / x.shape[-2] for x in forward(torch.zeros(1, channel_input, s, s))])  # forward
             self.stride = m.stride
             m.bias_init()  # only run once
+        if isinstance(m, MultiSegment):
+            for i in range(0, 4):
+                m.dataset = i
+                s = 256  # 2x min stride
+                m.inplace = self.inplace
+                forward = lambda x: self.forward(x)[0] if isinstance(m, (
+                Segment, MultiSegment, Pose, OBB)) else self.forward(x)
+                m.stride = torch.tensor(
+                    [s / x.shape[-2] for x in forward(torch.zeros(1, channel_input, s, s))])  # forward
+                self.stride = m.stride
+                m.bias_init()  # only run once
         else:
             self.stride = torch.Tensor([32])  # default stride for i.e. RTDETR
 
@@ -922,9 +933,9 @@ def parse_model(d, channel_middle, channel_input=3, verbose=True):  # model_dict
             args = [channel_middle[f]]
         elif m is Concat:
             channel_out = sum(channel_middle[x] for x in f)
-        elif m in {Detect, WorldDetect, Segment, Pose, OBB, ImagePoolingAttn}:
+        elif m in {Detect, WorldDetect, Segment, Pose, OBB, ImagePoolingAttn, MultiSegment}:
             args.append([channel_middle[x] for x in f])
-            if m is Segment:
+            if m in {Segment, MultiSegment}:
                 args[2] = make_divisible(min(args[2], max_channels) * width, 8)
         elif m is RTDETRDecoder:  # special case, channels arg must be passed in index 1
             args.insert(1, [channel_middle[x] for x in f])
@@ -1030,6 +1041,8 @@ def guess_model_task(model):
         if m == "detect":
             return "detect"
         if m == "segment":
+            return "segment"
+        if m == "multisegment":
             return "segment"
         if m == "pose":
             return "pose"

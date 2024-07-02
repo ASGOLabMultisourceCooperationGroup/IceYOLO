@@ -65,7 +65,7 @@ from .conv import (
 from .custom import (
     EMAttention, PreProcessorFold, IceFusion, TripletAttention
 )
-from .head import OBB, Classify, Detect, Pose, RTDETRDecoder, Segment, WorldDetect
+from .head import OBB, Classify, Detect, Pose, RTDETRDecoder, Segment, WorldDetect, MultiSegment
 from .transformer import (
     AIFI,
     MLP,
@@ -78,6 +78,8 @@ from .transformer import (
     TransformerEncoderLayer,
     TransformerLayer,
 )
+
+from .adapter import Adapter
 
 __all__ = (
     "Conv",
@@ -116,6 +118,7 @@ __all__ = (
     "Proto",
     "Detect",
     "Segment",
+    "MultiSegment",
     "Pose",
     "Classify",
     "TransformerEncoderLayer",
@@ -141,5 +144,6 @@ __all__ = (
     "EMAttention",
     "PreProcessorFold",
     "IceFusion",
-    "TripletAttention"
+    "TripletAttention",
+    "Adapter"
 )
