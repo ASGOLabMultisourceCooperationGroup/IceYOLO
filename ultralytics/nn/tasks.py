@@ -259,11 +259,13 @@ class BaseModel(nn.Module):
             batch (dict): Batch to compute loss on
             preds (torch.Tensor | List[torch.Tensor]): Predictions.
         """
-        if not hasattr(self, "criterion"):
-            self.criterion = self.init_criterion()
+        dataset = batch['dataset']
+        if not hasattr(self, f"criterion_{dataset}"):
+            setattr(self, f"criterion_{dataset}", self.init_criterion())
 
         preds = self.forward(batch["img"]) if preds is None else preds
-        return self.criterion(preds, batch)
+        criterion = getattr(self, f"criterion_{dataset}")
+        return criterion(preds, batch)
 
     def init_criterion(self):
         """Initialize the loss criterion for the BaseModel."""
@@ -308,7 +310,7 @@ class DetectionModel(BaseModel):
                 s = 256  # 2x min stride
                 m.inplace = self.inplace
                 forward = lambda x: self.forward(x)[0] if isinstance(m, (
-                Segment, MultiSegment, Pose, OBB)) else self.forward(x)
+                    Segment, MultiSegment, Pose, OBB)) else self.forward(x)
                 m.stride = torch.tensor(
                     [s / x.shape[-2] for x in forward(torch.zeros(1, channel_input, s, s))])  # forward
                 self.stride = m.stride
