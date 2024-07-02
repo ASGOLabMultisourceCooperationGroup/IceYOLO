@@ -9,14 +9,14 @@ from ultralytics.nn.modules import Adapter
 print("Modules loaded")
 
 # Change these settings
-NAME = "yrcc1"
-INPUT_CHANNEL = 3
+NAME = "yrccms"
+INPUT_CHANNEL = 4
 OUTPUT_CHANNEL = 16
-PATH = "/data/home/scv8591/run/yuka/datasets/dataset_yrcc1/images"
+PATH = "E:\\卫星数据\\dataset_satellite\\images"
 BATCH = 32
 IMG_SIZE = 768
 EPOCH = 100
-NORMALIZE = 255
+NORMALIZE = 1067
 
 
 class ImageDataset(Dataset):

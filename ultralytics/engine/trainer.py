@@ -132,9 +132,10 @@ class BaseTrainer:
         # TODO: Add adapter init
         self.adapters = [Adapter(input_channel) for input_channel in [3, 3, 4, 3]]
         for (name, adapter) in zip(["yrcc1", "yrcc2", "yrccms", "albert"], self.adapters):
-            state_dict = torch.load("weights/adapter_" + name + ".pt")
+            state_dict = torch.load("weights/adapter_" + name + ".pth")
             adapter.load_state_dict(state_dict)
             adapter.to(self.device)
+            adapter.training = False
         self.ema = None
 
         # Optimization utils init
@@ -322,7 +323,8 @@ class BaseTrainer:
             self._setup_ddp(world_size)
         self._setup_train(world_size)
 
-        nb = len(self.train_loader)  # number of batches
+        sel_dataset = 0
+        nb = len(self.train_loader[sel_dataset])  # number of batches
         nw = max(round(self.args.warmup_epochs * nb), 100) if self.args.warmup_epochs > 0 else -1  # warmup iterations
         last_opt_step = -1
         self.epoch_time = None
@@ -340,7 +342,7 @@ class BaseTrainer:
             self.plot_idx.extend([base_idx, base_idx + 1, base_idx + 2])
         epoch = self.start_epoch
         self.optimizer.zero_grad()  # zero any resumed gradients to ensure stability on train start
-        sel_dataset = 0
+
         while True:
             self.epoch = epoch
             self.run_callbacks("on_train_epoch_start")
@@ -361,9 +363,10 @@ class BaseTrainer:
 
             if RANK in {-1, 0}:
                 LOGGER.info(self.progress_string())
-                pbar = TQDM(enumerate(self.train_loader[sel_dataset]), total=nb)
+                pbar = TQDM(enumerate(self.train_loader[sel_dataset]), total=len(self.train_loader[sel_dataset]))
             self.tloss = None
             for i, batch in pbar:
+                batch['dataset'] = sel_dataset
                 self.run_callbacks("on_train_batch_start")
                 # Warmup
                 ni = i + nb * epoch

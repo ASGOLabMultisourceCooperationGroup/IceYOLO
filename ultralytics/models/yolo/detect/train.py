@@ -56,7 +56,9 @@ class DetectionTrainer(BaseTrainer):
 
     def preprocess_batch(self, batch):
         """Preprocesses a batch of images by scaling and converting to float."""
-        batch["img"] = batch["img"].to(self.device, non_blocking=True).float() / self.args.normalize
+        sel_dataset = batch['dataset']
+        batch["img"] = batch["img"].to(self.device, non_blocking=True).float() / self.args.normalize[sel_dataset]
+        batch["img"] = self.adapters[sel_dataset](batch["img"])
         if self.args.multi_scale:
             imgs = batch["img"]
             sz = (
