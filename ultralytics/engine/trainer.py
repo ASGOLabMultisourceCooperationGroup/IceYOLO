@@ -350,8 +350,13 @@ class BaseTrainer:
                 warnings.simplefilter("ignore")  # suppress 'Detected lr_scheduler.step() before optimizer.step()'
                 self.scheduler.step()
 
-            self.model.model[-1].dataset = sel_dataset
-            self.model.model[-1].nc = self.data[sel_dataset]['nc']
+            if world_size > 1:
+                self.model.module[-1].dataset = sel_dataset
+                self.model.module[-1].nc = self.data[sel_dataset]['nc']
+            else:
+                self.model.model[-1].dataset = sel_dataset
+                self.model.model[-1].nc = self.data[sel_dataset]['nc']
+
             self.model.train()
             if RANK != -1:
                 self.train_loader[sel_dataset].sampler.set_epoch(epoch)
@@ -467,7 +472,7 @@ class BaseTrainer:
             if self.stop:
                 break  # must break all DDP ranks
             epoch += 1
-            sel_dataset = (sel_dataset + 1) % 2
+            sel_dataset = (sel_dataset + 1) % 4
 
         if RANK in {-1, 0}:
             # Do final val with best.pt
