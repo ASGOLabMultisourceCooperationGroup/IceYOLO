@@ -503,13 +503,21 @@ class MultiSegment(nn.Module):
         self.albert = Segment(self.nc_all[3], nm, npr, ch)
 
     def forward(self, x):
+        self.yrcc1.requires_grad_(False)
+        self.yrcc2.requires_grad_(False)
+        self.yrccms.requires_grad_(False)
+        self.albert.requires_grad_(False)
         if self.dataset == 0:
+            self.yrcc1.requires_grad_(True)
             return self.yrcc1(x)
         elif self.dataset == 1:
+            self.yrcc2.requires_grad_(True)
             return self.yrcc2(x)
         elif self.dataset == 2:
+            self.yrccms.requires_grad_(True)
             return self.yrccms(x)
         elif self.dataset == 3:
+            self.albert.requires_grad_(True)
             return self.albert(x)
         else:
             raise NotImplementedError
