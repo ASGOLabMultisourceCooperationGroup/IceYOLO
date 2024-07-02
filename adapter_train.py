@@ -95,7 +95,7 @@ def train():
 
 def val_onflight(model):
     model.eval()
-    model.training = False
+    model.training = True
     total_loss = float(0)
     batch_count = 0
     loss_func = torch.nn.L1Loss()
