@@ -351,8 +351,8 @@ class BaseTrainer:
                 self.scheduler.step()
 
             if world_size > 1:
-                self.model.module[-1].dataset = sel_dataset
-                self.model.module[-1].nc = self.data[sel_dataset]['nc']
+                self.model.module.model[-1].dataset = sel_dataset
+                self.model.module.model[-1].nc = self.data[sel_dataset]['nc']
             else:
                 self.model.model[-1].dataset = sel_dataset
                 self.model.model[-1].nc = self.data[sel_dataset]['nc']
