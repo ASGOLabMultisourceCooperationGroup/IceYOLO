@@ -10,7 +10,7 @@ print("Modules loaded")
 
 # Change these settings
 NAME = "yrcc1"
-INPUT_CHANNEL = 4
+INPUT_CHANNEL = 3
 OUTPUT_CHANNEL = 16
 PATH = "/data/home/scv8591/run/yuka/datasets/dataset_yrcc1/images"
 BATCH = 32
