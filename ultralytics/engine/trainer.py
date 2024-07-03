@@ -252,12 +252,12 @@ class BaseTrainer:
             if any(x in k for x in freeze_layer_names):
                 LOGGER.info(f"Freezing layer '{k}'")
                 v.requires_grad = False
-            # elif not v.requires_grad and v.dtype.is_floating_point:  # only floating point Tensor can require gradients
-            #     LOGGER.info(
-            #         f"WARNING ⚠️ setting 'requires_grad=True' for frozen layer '{k}'. "
-            #         "See ultralytics.engine.trainer for customization of frozen layers."
-            #     )
-            #     v.requires_grad = True
+            elif not v.requires_grad and v.dtype.is_floating_point:  # only floating point Tensor can require gradients
+                LOGGER.info(
+                    f"WARNING ⚠️ setting 'requires_grad=True' for frozen layer '{k}'. "
+                    "See ultralytics.engine.trainer for customization of frozen layers."
+                )
+                v.requires_grad = True
 
         # Check AMP
         self.amp = torch.tensor(self.args.amp).to(self.device)  # True or False
@@ -270,7 +270,7 @@ class BaseTrainer:
         self.amp = bool(self.amp)  # as boolean
         self.scaler = torch.cuda.amp.GradScaler(enabled=self.amp)
         if world_size > 1:
-            self.model = nn.parallel.DistributedDataParallel(self.model, device_ids=[RANK])
+            self.model = nn.parallel.DataParallel(self.model, device_ids=[RANK])
 
         # Check imgsz
         gs = max(int(self.model.stride.max() if hasattr(self.model, "stride") else 32), 32)  # grid size (max stride)
