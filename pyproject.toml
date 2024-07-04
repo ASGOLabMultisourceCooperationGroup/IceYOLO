@@ -23,6 +23,7 @@ dependencies = [
     "pycocotools>=2.0.7",
     "tifffile>=2024.5.22",
     "einops>=0.8.0",
+    "py-spy>=0.3.14",
 ]
 requires-python = ">= 3.8"
 
