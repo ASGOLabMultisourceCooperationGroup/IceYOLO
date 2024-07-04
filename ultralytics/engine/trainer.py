@@ -5,7 +5,7 @@ Train a model on a dataset.
 Usage:
     $ yolo mode=train model=yolov8n.pt data=coco8.yaml imgsz=640 epochs=100 batch=16
 """
-
+import cProfile
 import gc
 import math
 import os
@@ -318,6 +318,8 @@ class BaseTrainer:
         self.run_callbacks("on_pretrain_routine_end")
 
     def _do_train(self, world_size=1):
+        profiler = cProfile.Profile()
+
         """Train completed, evaluate and plot if specified by arguments."""
         if world_size > 1:
             self._setup_ddp(world_size)
@@ -344,6 +346,7 @@ class BaseTrainer:
         self.optimizer.zero_grad()  # zero any resumed gradients to ensure stability on train start
 
         while True:
+            profiler.enable()
             self.epoch = epoch
             self.run_callbacks("on_train_epoch_start")
             with warnings.catch_warnings():
@@ -475,6 +478,10 @@ class BaseTrainer:
                 break  # must break all DDP ranks
             epoch += 1
             sel_dataset = (sel_dataset + 1) % 4
+            profiler.disable()
+
+            if self.epoch % 10 == 0:
+                profiler.dump_stats("profile_data.prof")
 
         if RANK in {-1, 0}:
             # Do final val with best.pt
