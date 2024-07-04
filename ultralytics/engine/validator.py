@@ -77,6 +77,7 @@ class BaseValidator:
             _callbacks (dict): Dictionary to store various callback functions.
         """
         self.args = get_cfg(overrides=args)
+        self.dataset = 0
         self.dataloader = dataloader
         self.pbar = pbar
         self.stride = None

@@ -65,7 +65,7 @@ class DetectionValidator(BaseValidator):
 
     def init_metrics(self, model):
         """Initialize evaluation metrics for YOLO."""
-        val = self.data.get(self.args.split, "")  # validation path
+        val = self.data[self.dataset].get(self.args.split, "")  # validation path
         self.is_coco = isinstance(val, str) and "coco" in val and val.endswith(f"{os.sep}val2017.txt")  # is COCO
         self.is_lvis = isinstance(val, str) and "lvis" in val and not self.is_coco  # is LVIS
         self.class_map = converter.coco80_to_coco91_class() if self.is_coco else list(range(len(model.names)))

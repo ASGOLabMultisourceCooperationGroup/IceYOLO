@@ -444,7 +444,7 @@ class BaseTrainer:
                 if (
                         self.args.val and (
                         epoch + 1) % self.args.val_period == 0) or final_epoch or self.stopper.possible_stop or self.stop:
-                    self.metrics, self.fitness = self.validate()
+                    self.metrics, self.fitness = self.validate(sel_dataset)
                 self.save_metrics(metrics={**self.label_loss_items(self.tloss), **self.metrics, **self.lr})
                 self.stop |= self.stopper(epoch + 1, self.fitness) or final_epoch
                 if self.args.time:
@@ -590,12 +590,13 @@ class BaseTrainer:
         """Allows custom preprocessing model inputs and ground truths depending on task type."""
         return batch
 
-    def validate(self):
+    def validate(self, dataset):
         """
         Runs validation on test set using self.validator.
 
         The returned dict is expected to contain "fitness" key.
         """
+        self.validator.dataset = dataset
         metrics = self.validator(self)
         fitness = metrics.pop("fitness", -self.loss.detach().cpu().numpy())  # use loss as fitness measure if not found
         if not self.best_fitness or self.best_fitness < fitness:
