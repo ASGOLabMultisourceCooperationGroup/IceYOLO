@@ -479,9 +479,7 @@ class BaseTrainer:
             epoch += 1
             sel_dataset = (sel_dataset + 1) % 4
             profiler.disable()
-
-            if self.epoch % 10 == 0:
-                profiler.dump_stats("profile_data.prof")
+            profiler.dump_stats("profile_data.prof")
 
         if RANK in {-1, 0}:
             # Do final val with best.pt
