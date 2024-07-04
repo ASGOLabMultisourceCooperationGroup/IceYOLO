@@ -23,7 +23,6 @@ from torch import nn, optim
 
 from ultralytics.cfg import get_cfg, get_save_dir
 from ultralytics.data.utils import check_cls_dataset, check_det_dataset
-from ultralytics.nn.modules import Adapter
 from ultralytics.nn.tasks import attempt_load_one_weight, attempt_load_weights
 from ultralytics.utils import (
     DEFAULT_CFG,
@@ -130,13 +129,13 @@ class BaseTrainer:
         self.model = check_model_file_from_stem(self.args.model)  # add suffix, i.e. yolov8n -> yolov8n.pt
         self.trainset, self.testset = self.get_dataset()
         # TODO: Add adapter init
-        self.adapters = [Adapter(input_channel) for input_channel in [3, 3, 4, 3]]
-        for (i, name, adapter) in zip(range(0, 4), ["yrcc1", "yrcc2", "yrccms", "albert"], self.adapters):
-            state_dict = torch.load("weights/adapter_" + name + ".pth")
-            adapter.load_state_dict(state_dict)
-            adapter.to(self.device)
-            adapter.training = False
-            self.adapters[i] = adapter
+        # self.adapters = [Adapter(input_channel) for input_channel in [3, 3, 4, 3]]
+        # for (i, name, adapter) in zip(range(0, 4), ["yrcc1", "yrcc2", "yrccms", "albert"], self.adapters):
+        #     state_dict = torch.load("weights/adapter_" + name + ".pth")
+        #     adapter.load_state_dict(state_dict)
+        #     adapter.to(self.device)
+        #     adapter.training = False
+        #     self.adapters[i] = adapter
         self.ema = None
 
         # Optimization utils init
@@ -352,9 +351,11 @@ class BaseTrainer:
                 self.scheduler.step()
 
             if world_size > 1:
+                self.model.module.model[0].dataset = sel_dataset
                 self.model.module.model[-1].dataset = sel_dataset
                 self.model.module.model[-1].nc = self.data[sel_dataset]['nc']
             else:
+                self.model.model[0].dataset = sel_dataset
                 self.model.model[-1].dataset = sel_dataset
                 self.model.model[-1].nc = self.data[sel_dataset]['nc']
 

@@ -47,7 +47,7 @@ from ultralytics.nn.modules import (
     ResNetLayer,
     RTDETRDecoder,
     Segment,
-    WorldDetect, EMAttention, PreProcessorFold, CBAM, IceFusion, TripletAttention, MultiSegment,
+    WorldDetect, EMAttention, PreProcessorFold, CBAM, IceFusion, TripletAttention, MultiSegment, MultiAdapter,
 )
 from ultralytics.utils import DEFAULT_CFG_DICT, DEFAULT_CFG_KEYS, LOGGER, colorstr, emojis, yaml_load
 from ultralytics.utils.checks import check_requirements, check_suffix, check_yaml
@@ -296,25 +296,29 @@ class DetectionModel(BaseModel):
         self.inplace = self.yaml.get("inplace", True)
 
         # Build strides
-        m = self.model[-1]  # Detect()
-        if isinstance(m, Detect):  # includes all Detect subclasses like Segment, Pose, OBB, WorldDetect
+        head = self.model[-1]  # Detect()
+        if isinstance(head, Detect):  # includes all Detect subclasses like Segment, Pose, OBB, WorldDetect
             s = 256  # 2x min stride
-            m.inplace = self.inplace
-            forward = lambda x: self.forward(x)[0] if isinstance(m, (Segment, Pose, OBB)) else self.forward(x)
-            m.stride = torch.tensor([s / x.shape[-2] for x in forward(torch.zeros(1, channel_input, s, s))])  # forward
-            self.stride = m.stride
-            m.bias_init()  # only run once
-        if isinstance(m, MultiSegment):
+            head.inplace = self.inplace
+            forward = lambda x: self.forward(x)[0] if isinstance(head, (Segment, Pose, OBB)) else self.forward(x)
+            head.stride = torch.tensor(
+                [s / x.shape[-2] for x in forward(torch.zeros(1, channel_input, s, s))])  # forward
+            self.stride = head.stride
+            head.bias_init()  # only run once
+        if isinstance(head, MultiSegment):
+            adapter = self.model[0]
+            channel_input = [3, 3, 4, 3]
             for i in range(0, 4):
-                m.dataset = i
+                adapter.dataset = i
+                head.dataset = i
                 s = 256  # 2x min stride
-                m.inplace = self.inplace
-                forward = lambda x: self.forward(x)[0] if isinstance(m, (
+                head.inplace = self.inplace
+                forward = lambda x: self.forward(x)[0] if isinstance(head, (
                     Segment, MultiSegment, Pose, OBB)) else self.forward(x)
-                m.stride = torch.tensor(
-                    [s / x.shape[-2] for x in forward(torch.zeros(1, channel_input, s, s))])  # forward
-                self.stride = m.stride
-                m.bias_init()  # only run once
+                head.stride = torch.tensor(
+                    [s / x.shape[-2] for x in forward(torch.zeros(1, channel_input[i], s, s))])  # forward
+                self.stride = head.stride
+                head.bias_init()  # only run once
         else:
             self.stride = torch.Tensor([32])  # default stride for i.e. RTDETR
 
@@ -967,6 +971,8 @@ def parse_model(d, channel_middle, channel_input=3, verbose=True):  # model_dict
             args = [c1, c2]
         elif m in {TripletAttention}:
             channel_out = channel_middle[f]
+        elif m is MultiAdapter:
+            channel_out = 16
         else:
             channel_out = channel_middle[f]
 

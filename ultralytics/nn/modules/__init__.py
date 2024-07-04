@@ -17,6 +17,7 @@ Example:
     ```
 """
 
+from .adapter import Adapter, MultiAdapter
 from .block import (
     C1,
     C2,
@@ -78,8 +79,6 @@ from .transformer import (
     TransformerEncoderLayer,
     TransformerLayer,
 )
-
-from .adapter import Adapter
 
 __all__ = (
     "Conv",
@@ -145,5 +144,6 @@ __all__ = (
     "PreProcessorFold",
     "IceFusion",
     "TripletAttention",
-    "Adapter"
+    "Adapter",
+    "MultiAdapter"
 )
