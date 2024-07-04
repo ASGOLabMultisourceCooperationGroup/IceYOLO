@@ -24,6 +24,9 @@ dependencies = [
     "tifffile>=2024.5.22",
     "einops>=0.8.0",
     "py-spy>=0.3.14",
+    "snakeviz>=2.2.0",
+    "maturin>=1.6.0",
+    "rs-utils>=0.1.4",
 ]
 requires-python = ">= 3.8"
 
@@ -48,4 +51,9 @@ url = "https://pypi.tuna.tsinghua.edu.cn/simple"
 [[tool.rye.sources]]
 name = "torch"
 url = "https://mirror.sjtu.edu.cn/pytorch-wheels/torch_stable.html"
+type = "find-links"
+
+[[tool.rye.sources]]
+name = "rs_utils"
+url = "file:///./assets"
 type = "find-links"
