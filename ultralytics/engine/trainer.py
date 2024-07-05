@@ -234,6 +234,7 @@ class BaseTrainer:
         self.run_callbacks("on_pretrain_routine_start")
         ckpt = self.setup_model()
         self.model = self.model.to(self.device)
+        self.set_model_attributes()
 
         # Freeze layers
         freeze_list = (
@@ -346,7 +347,6 @@ class BaseTrainer:
 
         while True:
             # profiler.enable()
-            self.set_model_attributes(sel_dataset)
             self.epoch = epoch
             self.run_callbacks("on_train_epoch_start")
             with warnings.catch_warnings():
