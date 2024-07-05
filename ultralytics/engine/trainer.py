@@ -629,9 +629,10 @@ class BaseTrainer:
         """
         return {"loss": loss_items} if loss_items is not None else ["loss"]
 
-    def set_model_attributes(self, dataset):
+    def set_model_attributes(self):
         """To set or update model parameters before training."""
-        self.model.names = self.data[dataset]["names"]
+        raise NotImplementedError
+        self.model.names = self.data["names"]
 
     def build_targets(self, preds, targets):
         """Builds target tensors for training YOLO model."""
