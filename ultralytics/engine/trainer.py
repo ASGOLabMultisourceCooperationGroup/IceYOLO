@@ -5,7 +5,7 @@ Train a model on a dataset.
 Usage:
     $ yolo mode=train model=yolov8n.pt data=coco8.yaml imgsz=640 epochs=100 batch=16
 """
-import cProfile
+# import cProfile
 import gc
 import math
 import os
@@ -234,7 +234,6 @@ class BaseTrainer:
         self.run_callbacks("on_pretrain_routine_start")
         ckpt = self.setup_model()
         self.model = self.model.to(self.device)
-        self.set_model_attributes()
 
         # Freeze layers
         freeze_list = (
@@ -318,7 +317,7 @@ class BaseTrainer:
         self.run_callbacks("on_pretrain_routine_end")
 
     def _do_train(self, world_size=1):
-        profiler = cProfile.Profile()
+        # profiler = cProfile.Profile()
 
         """Train completed, evaluate and plot if specified by arguments."""
         if world_size > 1:
@@ -346,7 +345,8 @@ class BaseTrainer:
         self.optimizer.zero_grad()  # zero any resumed gradients to ensure stability on train start
 
         while True:
-            profiler.enable()
+            # profiler.enable()
+            self.set_model_attributes(sel_dataset)
             self.epoch = epoch
             self.run_callbacks("on_train_epoch_start")
             with warnings.catch_warnings():
@@ -368,7 +368,7 @@ class BaseTrainer:
             pbar = enumerate(self.train_loader[sel_dataset])
             # Update dataloader attributes (optional)
             if epoch == (self.epochs - self.args.close_mosaic):
-                self._close_dataloader_mosaic()
+                self._close_dataloader_mosaic(sel_dataset)
                 self.train_loader[sel_dataset].reset()
 
             if RANK in {-1, 0}:
@@ -477,9 +477,10 @@ class BaseTrainer:
             if self.stop:
                 break  # must break all DDP ranks
             epoch += 1
-            sel_dataset = (sel_dataset + 1) % 4
-            profiler.disable()
-            profiler.dump_stats("profile_data.prof")
+            if epoch % 10 == 0:
+                sel_dataset = (sel_dataset + 1) % 4
+            # profiler.disable()
+            # profiler.dump_stats("profile_data.prof")
 
         if RANK in {-1, 0}:
             # Do final val with best.pt
@@ -628,9 +629,9 @@ class BaseTrainer:
         """
         return {"loss": loss_items} if loss_items is not None else ["loss"]
 
-    def set_model_attributes(self):
+    def set_model_attributes(self, dataset):
         """To set or update model parameters before training."""
-        self.model.names = self.data["names"]
+        self.model.names = self.data[dataset]["names"]
 
     def build_targets(self, preds, targets):
         """Builds target tensors for training YOLO model."""
@@ -730,15 +731,15 @@ class BaseTrainer:
         self.best_fitness = best_fitness
         self.start_epoch = start_epoch
         if start_epoch > (self.epochs - self.args.close_mosaic):
-            self._close_dataloader_mosaic()
+            self._close_dataloader_mosaic(0)
 
-    def _close_dataloader_mosaic(self):
+    def _close_dataloader_mosaic(self, dataset):
         """Update dataloaders to stop using mosaic augmentation."""
-        if hasattr(self.train_loader.dataset, "mosaic"):
-            self.train_loader.dataset.mosaic = False
-        if hasattr(self.train_loader.dataset, "close_mosaic"):
+        if hasattr(self.train_loader[dataset].dataset, "mosaic"):
+            self.train_loader[dataset].dataset.mosaic = False
+        if hasattr(self.train_loader[dataset].dataset, "close_mosaic"):
             LOGGER.info("Closing dataloader mosaic")
-            self.train_loader.dataset.close_mosaic(hyp=self.args)
+            self.train_loader[dataset].dataset.close_mosaic(hyp=self.args)
 
     def build_optimizer(self, model, name="auto", lr=0.001, momentum=0.9, decay=1e-5, iterations=1e5):
         """
