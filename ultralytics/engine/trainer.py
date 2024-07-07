@@ -478,7 +478,7 @@ class BaseTrainer:
                 break  # must break all DDP ranks
             epoch += 1
             # if epoch % 10 == 0:
-            sel_dataset = (sel_dataset + 1) % 2
+            # sel_dataset = (sel_dataset + 1) % 2
             # profiler.disable()
             # profiler.dump_stats("profile_data.prof")
 
