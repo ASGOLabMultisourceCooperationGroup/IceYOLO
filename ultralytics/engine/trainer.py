@@ -325,7 +325,7 @@ class BaseTrainer:
             self._setup_ddp(world_size)
         self._setup_train(world_size)
 
-        sel_dataset = 1
+        sel_dataset = 0
         nb = len(self.train_loader[sel_dataset])  # number of batches
         nw = max(round(self.args.warmup_epochs * nb), 100) if self.args.warmup_epochs > 0 else -1  # warmup iterations
         last_opt_step = -1
@@ -478,7 +478,7 @@ class BaseTrainer:
                 break  # must break all DDP ranks
             epoch += 1
             # if epoch % 10 == 0:
-            # sel_dataset = (sel_dataset + 1) % 2
+            sel_dataset = (sel_dataset + 1) % 4
             # profiler.disable()
             # profiler.dump_stats("profile_data.prof")
 
