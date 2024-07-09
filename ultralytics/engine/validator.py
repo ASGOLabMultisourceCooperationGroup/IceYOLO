@@ -152,7 +152,7 @@ class BaseValidator:
             if not pt:
                 self.args.rect = False
             self.stride = model.stride  # used in get_dataloader() for padding
-            self.dataloader = [self.get_dataloader(self.data[i].get(self.args.split), self.args.batch) for i in
+            self.dataloader = [self.get_dataloader(self.data[i].get(self.args.split), self.args.batch, i) for i in
                                range(len(self.data))]
 
             model.eval()
@@ -161,14 +161,16 @@ class BaseValidator:
         names = [
             {0: 'land', 1: 'ice'},
             {0: 'land', 1: 'shore_ice', 2: 'stream_ice'},
-            {0: 'land', 1: 'water', 2: 'shore_ice', 3: 'stream_ice', 4: 'vertical_ice', 5: 'horizental_ice', 6: 'snow'},
+            {0: 'land', 1: 'water', 2: 'stream_ice', 3: 'vertical_ice', 4: 'horizental_ice', 5: 'snow'},
             {0: 'ice_anchor', 1: 'ice'}
         ]
         for i in range(0, len(self.dataloader)):
             self.dataset = i
             model.model.model[0].dataset = self.dataset
             model.model.model[-1].dataset = self.dataset
+            model.model.model[-1].nc = len(names[self.dataset])
             model.names = names[self.dataset]
+            self.nc = len(names[self.dataset])
             self.run_callbacks("on_val_start")
             dt = (
                 Profile(device=self.device),

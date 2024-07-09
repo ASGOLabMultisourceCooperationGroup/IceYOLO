@@ -181,7 +181,8 @@ class DetectionValidator(BaseValidator):
         pf = "%22s" + "%11i" * 2 + "%11.3g" * len(self.metrics.keys)  # print format
         LOGGER.info(pf % ("all", self.seen, self.nt_per_class.sum(), *self.metrics.mean_results()))
         if self.nt_per_class.sum() == 0:
-            LOGGER.warning(f"WARNING ⚠️ no labels found in {self.args.task} set, can not compute metrics without labels")
+            LOGGER.warning(
+                f"WARNING ⚠️ no labels found in {self.args.task} set, can not compute metrics without labels")
 
         # Print results per class
         if self.args.verbose and not self.training and self.nc > 1 and len(self.stats):
@@ -210,7 +211,7 @@ class DetectionValidator(BaseValidator):
         iou = box_iou(gt_bboxes, detections[:, :4])
         return self.match_predictions(detections[:, 5], gt_cls, iou)
 
-    def build_dataset(self, img_path, mode="val", batch=None):
+    def build_dataset(self, img_path, dataset, mode="val", batch=None):
         """
         Build YOLO Dataset.
 
@@ -219,11 +220,11 @@ class DetectionValidator(BaseValidator):
             mode (str): `train` mode or `val` mode, users are able to customize different augmentations for each mode.
             batch (int, optional): Size of batches, this is for `rect`. Defaults to None.
         """
-        return build_yolo_dataset(self.args, img_path, batch, self.data, mode=mode, stride=self.stride)
+        return build_yolo_dataset(self.args, img_path, batch, self.data[dataset], mode=mode, stride=self.stride)
 
-    def get_dataloader(self, dataset_path, batch_size):
+    def get_dataloader(self, dataset_path, batch_size, dataset):
         """Construct and return dataloader."""
-        dataset = self.build_dataset(dataset_path, batch=batch_size, mode="val")
+        dataset = self.build_dataset(dataset_path, batch=batch_size, dataset=dataset, mode="val")
         return build_dataloader(dataset, batch_size, self.args.workers, shuffle=False, rank=-1)  # return dataloader
 
     def plot_val_samples(self, batch, ni):
@@ -270,7 +271,7 @@ class DetectionValidator(BaseValidator):
                 {
                     "image_id": image_id,
                     "category_id": self.class_map[int(p[5])]
-                    + (1 if self.is_lvis else 0),  # index starts from 1 if it's lvis
+                                   + (1 if self.is_lvis else 0),  # index starts from 1 if it's lvis
                     "bbox": [round(x, 3) for x in b],
                     "score": round(p[4], 5),
                 }
@@ -281,9 +282,9 @@ class DetectionValidator(BaseValidator):
         if self.args.save_json and (self.is_coco or self.is_lvis) and len(self.jdict):
             pred_json = self.save_dir / "predictions.json"  # predictions
             anno_json = (
-                self.data["path"]
-                / "annotations"
-                / ("instances_val2017.json" if self.is_coco else f"lvis_v1_{self.args.split}.json")
+                    self.data["path"]
+                    / "annotations"
+                    / ("instances_val2017.json" if self.is_coco else f"lvis_v1_{self.args.split}.json")
             )  # annotations
             pkg = "pycocotools" if self.is_coco else "lvis"
             LOGGER.info(f"\nEvaluating {pkg} mAP using {pred_json} and {anno_json}...")
