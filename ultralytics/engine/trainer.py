@@ -325,7 +325,7 @@ class BaseTrainer:
             self._setup_ddp(world_size)
         self._setup_train(world_size)
 
-        sel_dataset = 3
+        sel_dataset = 0
         nb = len(self.train_loader[sel_dataset])  # number of batches
         nw = max(round(self.args.warmup_epochs * nb), 100) if self.args.warmup_epochs > 0 else -1  # warmup iterations
         last_opt_step = -1

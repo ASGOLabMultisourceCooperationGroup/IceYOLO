@@ -164,7 +164,7 @@ class BaseValidator:
             {0: 'land', 1: 'water', 2: 'stream_ice', 3: 'vertical_ice', 4: 'horizental_ice', 5: 'snow'},
             {0: 'ice_anchor', 1: 'ice'}
         ]
-        for i in range(0, len(self.dataloader)):
+        for i in range(3, len(self.dataloader)):
             self.dataset = i
             model.model.model[0].dataset = self.dataset
             model.model.model[-1].dataset = self.dataset
