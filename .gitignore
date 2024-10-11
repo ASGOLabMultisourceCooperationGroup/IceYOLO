@@ -172,3 +172,5 @@ requirements.lock
 run/
 weights/
 multi_run/
+predict/
+forest_run/
