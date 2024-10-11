@@ -15,6 +15,7 @@ from torch.utils.data import ConcatDataset
 
 from ultralytics.utils import LOCAL_RANK, NUM_THREADS, TQDM, colorstr
 from ultralytics.utils.ops import resample_segments
+import rs_utils
 
 from .augment import (
     Compose,
@@ -220,7 +221,9 @@ class YOLODataset(BaseDataset):
         if len(segments) > 0:
             # list[np.array(1000, 2)] * num_samples
             # (N, 1000, 2)
-            segments = np.stack(resample_segments(segments, n=segment_resamples), axis=0)
+            # segments = np.stack(resample_segments(segments, n=segment_resamples), axis=0)
+            segments = rs_utils.resample_segments([arr.flatten().tolist() for arr in segments], segment_resamples)
+            segments = np.stack([np.around(s, decimals=8).reshape(-1, 2) for s in segments], axis=0)
         else:
             segments = np.zeros((0, segment_resamples, 2), dtype=np.float32)
         label["instances"] = Instances(bboxes, segments, keypoints, bbox_format=bbox_format, normalized=normalized)
