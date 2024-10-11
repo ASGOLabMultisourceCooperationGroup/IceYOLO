@@ -23,6 +23,8 @@ __all__ = (
     "RepConv",
 )
 
+from torch.nn import Linear
+
 from ultralytics.nn.modules.kan import KANLinear
 
 
@@ -281,11 +283,11 @@ class CBAM(nn.Module):
     def __init__(self, channels, reduction=16):
         super(CBAM, self).__init__()
         self.channel_attention = ChannelAttention(channels, reduction)
-        self.spatial_attention = SpatialAttention()
+        # self.spatial_attention = SpatialAttention()
 
     def forward(self, x):
         x = self.channel_attention(x) * x
-        x = self.spatial_attention(x) * x
+        # x = self.spatial_attention(x) * x
         return x
 
 
@@ -294,29 +296,33 @@ class ChannelAttention(nn.Module):
         super(ChannelAttention, self).__init__()
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
         self.max_pool = nn.AdaptiveMaxPool2d(1)
-        self.fc = nn.Sequential(
-            nn.Conv2d(in_planes, in_planes // reduction, 1, bias=False),
-            nn.ReLU(),
-            nn.Conv2d(in_planes // reduction, in_planes, 1, bias=False),
-        )
+        # self.fc = nn.Sequential(
+        #     nn.Conv2d(in_planes, in_planes // reduction, 1, bias=False),
+        #     nn.ReLU(),
+        #     nn.Conv2d(in_planes // reduction, in_planes, 1, bias=False),
+        # )
         # self.fc = nn.Sequential(
         #     KANLinear(in_planes, in_planes // reduction),
         #     KANLinear(in_planes // reduction, in_planes),
         # )
+        self.fc = nn.Sequential(
+            Linear(in_planes, in_planes // reduction),
+            Linear(in_planes // reduction, in_planes),
+        )
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
-        # b, c, _, _ = x.size()
-        # avg_x = self.avg_pool(x).view(b, c)
-        # max_x = self.max_pool(x).view(b, c)
-        # avg_out = self.fc(avg_x)
-        # max_out = self.fc(max_x)
-        # out = (avg_out + max_out).view(b, c, 1, 1)
-        # return self.sigmoid(out)
-        avg_out = self.fc(self.avg_pool(x))
-        max_out = self.fc(self.max_pool(x))
-        out = avg_out + max_out
+        b, c, _, _ = x.size()
+        avg_x = self.avg_pool(x).view(b, c)
+        max_x = self.max_pool(x).view(b, c)
+        avg_out = self.fc(avg_x)
+        max_out = self.fc(max_x)
+        out = (avg_out + max_out).view(b, c, 1, 1)
         return self.sigmoid(out)
+        # avg_out = self.fc(self.avg_pool(x))
+        # max_out = self.fc(self.max_pool(x))
+        # out = avg_out + max_out
+        # return self.sigmoid(out)
 
 
 class SpatialAttention(nn.Module):

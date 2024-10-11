@@ -171,3 +171,6 @@ requirements.lock
 
 run/
 weights/
+forest_run/
+multi_run/
+predict/
