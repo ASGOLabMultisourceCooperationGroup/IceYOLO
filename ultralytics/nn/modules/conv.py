@@ -307,6 +307,7 @@ class ChannelAttention(nn.Module):
         # )
         self.fc = nn.Sequential(
             Linear(in_planes, in_planes // reduction),
+            nn.ReLU(),
             Linear(in_planes // reduction, in_planes),
         )
         self.sigmoid = nn.Sigmoid()
