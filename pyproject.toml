@@ -32,7 +32,9 @@ build-backend = "hatchling.build"
 
 [tool.rye]
 managed = true
-dev-dependencies = []
+dev-dependencies = [
+    "onnx>=1.17.0",
+]
 
 [tool.hatch.metadata]
 allow-direct-references = true
@@ -48,3 +50,8 @@ url = "https://pypi.tuna.tsinghua.edu.cn/simple"
 name = "torch"
 url = "https://mirror.sjtu.edu.cn/pytorch-wheels/torch_stable.html"
 type = "find-links"
+
+#[[tool.rye.sources]]
+#name = "rs_utils"
+#url = "file:///assets"
+#type = "find-links"

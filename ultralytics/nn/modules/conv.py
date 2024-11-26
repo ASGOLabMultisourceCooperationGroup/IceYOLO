@@ -19,6 +19,7 @@ __all__ = (
     "ChannelAttention",
     "SpatialAttention",
     "CBAM",
+    "BackboneAttn",
     "Concat",
     "RepConv",
 )
@@ -277,6 +278,18 @@ class RepConv(nn.Module):
             self.__delattr__("bn")
         if hasattr(self, "id_tensor"):
             self.__delattr__("id_tensor")
+
+class BackboneAttn(nn.Module):
+    def __init__(self, channels, reduction=16):
+        super(BackboneAttn, self).__init__()
+        self.channel_attention = ChannelAttention(channels, reduction)
+        self.spatial_attention = SpatialAttention()
+
+    def forward(self, x):
+        channel = self.channel_attention(x) * x
+        spatial = self.spatial_attention(x) * x
+        mean = torch.mean(torch.stack([channel, spatial], dim=0), dim=0)
+        return mean
 
 
 class CBAM(nn.Module):

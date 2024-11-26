@@ -9,6 +9,7 @@ import cv2
 import numpy as np
 import torch
 import torch.nn.functional as F
+from pt_soft_nms import soft_nms
 
 from ultralytics.utils import LOGGER
 from ultralytics.utils.metrics import batch_probiou
@@ -205,7 +206,6 @@ def non_max_suppression(
             shape (num_boxes, 6 + num_masks) containing the kept boxes, with columns
             (x1, y1, x2, y2, confidence, class, mask1, mask2, ...).
     """
-    import torchvision  # scope for faster 'import ultralytics'
 
     # Checks
     assert 0 <= conf_thres <= 1, f"Invalid Confidence threshold {conf_thres}, valid values are between 0.0 and 1.0"
@@ -279,7 +279,9 @@ def non_max_suppression(
             i = nms_rotated(boxes, scores, iou_thres)
         else:
             boxes = x[:, :4] + c  # boxes (offset by class)
-            i = torchvision.ops.nms(boxes, scores, iou_thres)  # NMS
+            # i = torchvision.ops.nms(boxes, scores, iou_thres)  # NMS
+            updated_score, i = soft_nms(boxes, scores, sigma=0.5, score_threshold=0.1)
+
         i = i[:max_det]  # limit detections
 
         # # Experimental
