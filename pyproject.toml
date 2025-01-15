@@ -51,6 +51,10 @@ name = "torch"
 url = "https://mirror.sjtu.edu.cn/pytorch-wheels/torch_stable.html"
 type = "find-links"
 
+[tool.uv]
+find-links = ["https://mirror.sjtu.edu.cn/pytorch-wheels/torch_stable.html"]
+
+
 #[[tool.rye.sources]]
 #name = "rs_utils"
 #url = "file:///assets"
