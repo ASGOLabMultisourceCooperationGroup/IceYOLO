@@ -1,4 +1,7 @@
 import os
+
+os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2,3"
+
 from ultralytics import YOLO
 
 backbone_model = "yolov8x-seg-backboneattn.yaml"
@@ -23,19 +26,20 @@ if os.name == 'nt':
 else:
     model.train(
     #    resume=True,
-        data="datasets/dataset_yrcc2.yaml",
+        data="datasets/dataset_yrccms.yaml",
         epochs=500,
-        batch=30,
+        batch=40,
         imgsz=768,
-        device="0,1",
+        device="0,1,2,3",
         patience=400,
         save_period=50,
         # workers=0,
         project="run",
-        name="backboneattn-yrcc2",
+        name="backboneattn-yrccms",
         mosaic=0,
-        # normalize=1067,
-        # hsv_h=0,
-        # hsv_s=0,
-        # hsv_v=0
+        normalize=10000,
+        input_channel=4,
+        hsv_h=0,
+        hsv_s=0,
+        hsv_v=0
     )
