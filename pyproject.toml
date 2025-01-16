@@ -24,7 +24,7 @@ dependencies = [
     "tifffile>=2024.5.22",
     "einops>=0.8.0",
 ]
-requires-python = ">= 3.12 < 3.13"
+requires-python = ">= 3.12,< 3.13"
 
 [build-system]
 requires = ["hatchling"]
