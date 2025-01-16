@@ -2,8 +2,8 @@
 
 # Parameters
 nc: 80 # number of classes
-channel_middle: 3
-channel_input: 3
+channel_middle: 4
+channel_input: 4
 scales:
   # [depth, width, max_channels]
   n: [ 0.33, 0.25, 1024 ]

@@ -19,6 +19,7 @@ __all__ = (
     "ChannelAttention",
     "SpatialAttention",
     "CBAM",
+    "KCAM",
     "BackboneAttn",
     "Concat",
     "RepConv",
@@ -291,6 +292,24 @@ class BackboneAttn(nn.Module):
         mean = torch.mean(torch.stack([channel, spatial], dim=0), dim=0)
         return mean
 
+class KCAM(nn.Module):
+    def __init__(self, channels, reduction=16):
+        super(KCAM, self).__init__()
+        self.avg_pool = nn.AdaptiveAvgPool2d(1)
+        self.max_pool = nn.AdaptiveMaxPool2d(1)
+        self.fc = nn.Sequential(
+            KANLinear(channels, channels // reduction),
+            KANLinear(channels // reduction, channels),
+        )
+
+    def forward(self, x):
+        b, c, _, _ = x.size()
+        avg_x = self.avg_pool(x).view(b, c)
+        max_x = self.max_pool(x).view(b, c)
+        avg_out = self.fc(avg_x)
+        max_out = self.fc(max_x)
+        out = (avg_out + max_out).view(b, c, 1, 1)
+        return self.sigmoid(out) * x
 
 class CBAM(nn.Module):
     def __init__(self, channels, reduction=16):
