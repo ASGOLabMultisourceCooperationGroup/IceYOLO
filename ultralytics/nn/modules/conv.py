@@ -301,6 +301,7 @@ class KCAM(nn.Module):
             KANLinear(channels, channels // reduction),
             KANLinear(channels // reduction, channels),
         )
+        self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
         b, c, _, _ = x.size()
