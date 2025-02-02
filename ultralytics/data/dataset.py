@@ -221,8 +221,8 @@ class YOLODataset(BaseDataset):
         if len(segments) > 0:
             # list[np.array(1000, 2)] * num_samples
             # (N, 1000, 2)
-            # segments = np.stack(resample_segments(segments, n=segment_resamples), axis=0)
-            segments = rs_utils.resample_segments([arr.flatten().tolist() for arr in segments], segment_resamples)
+            segments = np.stack(resample_segments(segments, n=segment_resamples), axis=0)
+            # segments = rs_utils.resample_segments([arr.flatten().tolist() for arr in segments], segment_resamples)
             segments = np.stack([np.around(s, decimals=8).reshape(-1, 2) for s in segments], axis=0)
         else:
             segments = np.zeros((0, segment_resamples, 2), dtype=np.float32)
