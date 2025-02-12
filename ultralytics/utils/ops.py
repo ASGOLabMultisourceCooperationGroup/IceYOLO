@@ -11,6 +11,8 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
+from pt_soft_nms import soft_nms
+
 if os.name == 'nt':
     from pt_soft_nms import soft_nms
 else:
@@ -286,10 +288,10 @@ def non_max_suppression(
             boxes = x[:, :4] + c  # boxes (offset by class)
             # i = torchvision.ops.nms(boxes, scores, iou_thres)  # NMS
             updated_score, i = soft_nms(boxes, scores, sigma=0.5, score_threshold=0.1)
-            # if os.name == 'nt':
-            #     updated_score, i = soft_nms(boxes, scores, sigma=0.5, score_threshold=0.1)
-            # else:
-            #     i = torchvision.ops.nms(boxes, scores, iou_thres)
+            if os.name == 'nt':
+                updated_score, i = soft_nms(boxes, scores, sigma=0.5, score_threshold=0.1)
+            else:
+                i = torchvision.ops.nms(boxes, scores, iou_thres)
 
         i = i[:max_det]  # limit detections
 
