@@ -49,6 +49,7 @@ from ultralytics.nn.modules import (
     Segment,
     WorldDetect, EMAttention, PreProcessorFold, CBAM, BackboneAttn, IceFusion, TripletAttention, KCAM,
 )
+from ultralytics.nn.bifpn import BiFPN_Concat2,BiFPN_Concat3
 from ultralytics.utils import DEFAULT_CFG_DICT, DEFAULT_CFG_KEYS, LOGGER, colorstr, emojis, yaml_load
 from ultralytics.utils.checks import check_requirements, check_suffix, check_yaml
 from ultralytics.utils.loss import v8ClassificationLoss, v8DetectionLoss, v8OBBLoss, v8PoseLoss, v8SegmentationLoss
@@ -920,7 +921,7 @@ def parse_model(d, channel_middle, channel_input=3, verbose=True):  # model_dict
             channel_out = args[1] if args[3] else args[1] * 4
         elif m is nn.BatchNorm2d:
             args = [channel_middle[f]]
-        elif m is Concat:
+        elif m in [Concat, BiFPN_Concat2, BiFPN_Concat3]:
             channel_out = sum(channel_middle[x] for x in f)
         elif m in {Detect, WorldDetect, Segment, Pose, OBB, ImagePoolingAttn}:
             args.append([channel_middle[x] for x in f])
