@@ -34,12 +34,12 @@ else:
         patience=400,
         save_period=50,
         # workers=0,
-        project="run",
-        name="backboneattn-yrccms",
+        project="/root/autodl-tmp/yuka-run",
+        name="yrcc2",
         mosaic=0,
-        normalize=10000,
-        input_channel=4,
-        hsv_h=0,
-        hsv_s=0,
-        hsv_v=0
+        # normalize=10000,
+        # input_channel=4,
+        # hsv_h=0,
+        # hsv_s=0,
+        # hsv_v=0
     )
