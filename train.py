@@ -4,7 +4,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2,3"
 
 from ultralytics import YOLO
 
-backbone_model = "yolov8x-seg-backboneattn.yaml"
+backbone_model = "yolov8x-seg-cbam.yaml"
 #backbone_model = "run/conv-cbam-yrcc2-0/weights/epoch400.pt"
 
 model = YOLO(backbone_model)
@@ -19,8 +19,8 @@ if os.name == 'nt':
         patience=40,
         save_period=50,
         workers=0,
-        project="run",
-        name="backboneattn",
+        project="/root/autodl-tmp/yuka-run",
+        name="yrcc2",
         mosaic=0
     )
 else:
