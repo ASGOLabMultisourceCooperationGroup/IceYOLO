@@ -1,6 +1,6 @@
-# Yuka
+# IceYOLO
 
-YRCC instance segmentations based on YOLOv8
+IceYOLO implementation of the paper [River Ice Fine-Grained Segmentation: A GF-2 Satellite Image Dataset and Deep Learning Benchmark](https://doi.org/10.1109/TGRS.2025.3604644)
 
 # Note
 
